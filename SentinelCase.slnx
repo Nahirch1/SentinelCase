@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SentinelCase.Api/SentinelCase.Api.csproj" />
+    <Project Path="src/SentinelCase.Application/SentinelCase.Application.csproj" />
+    <Project Path="src/SentinelCase.Domain/SentinelCase.Domain.csproj" />
+    <Project Path="src/SentinelCase.Infrastructure/SentinelCase.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SentinelCase.IntegrationTests/SentinelCase.IntegrationTests.csproj" />
+    <Project Path="tests/SentinelCase.UnitTests/SentinelCase.UnitTests.csproj" />
+  </Folder>
+</Solution>
