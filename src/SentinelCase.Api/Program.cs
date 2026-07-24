@@ -1,4 +1,15 @@
+using SentinelCase.Api.Common.ExceptionHandling;
+using SentinelCase.Api.Endpoints;
+using SentinelCase.Application;
+using SentinelCase.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddExceptionHandler<DomainExceptionHandler>();
 
 // Add services to the container.
 
@@ -14,10 +25,14 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseExceptionHandler();
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapIncidentEndpoints();
 
 app.Run();

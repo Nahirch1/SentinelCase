@@ -494,3 +494,6 @@ data/
 
 # Local secrets
 *.secrets.json
+
+# Local development configuration
+src/SentinelCase.Api/appsettings.Development.json
