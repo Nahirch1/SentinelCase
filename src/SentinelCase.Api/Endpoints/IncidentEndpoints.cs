@@ -56,12 +56,18 @@ public static class IncidentEndpoints
     private static async Task<IResult> GetIncidentsAsync(
         int pageNumber,
         int pageSize,
+        IncidentStatus? status,
+        IncidentSeverity? severity,
+        string? searchTerm,
         ISender sender,
         CancellationToken cancellationToken)
     {
         var query = new GetIncidentsQuery(
             pageNumber,
-            pageSize);
+            pageSize,
+            status,
+            severity,
+            searchTerm);
 
         var result = await sender.Send(
             query,

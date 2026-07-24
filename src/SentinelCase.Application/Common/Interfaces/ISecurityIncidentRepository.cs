@@ -1,5 +1,6 @@
 using SentinelCase.Application.Common.Models;
 using SentinelCase.Domain.Entities;
+using SentinelCase.Domain.Enums;
 
 namespace SentinelCase.Application.Common.Interfaces;
 
@@ -16,6 +17,9 @@ public interface ISecurityIncidentRepository
     Task<PagedResult<SecurityIncident>> GetPagedAsync(
         int pageNumber,
         int pageSize,
+        IncidentStatus? status = null,
+        IncidentSeverity? severity = null,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default);
 
     Task<bool> ExistsWithTitleAsync(

@@ -23,6 +23,9 @@ public sealed class GetIncidentsQueryHandler
         var result = await _repository.GetPagedAsync(
             request.PageNumber,
             request.PageSize,
+            request.Status,
+            request.Severity,
+            request.SearchTerm,
             cancellationToken);
 
         var items = result.Items

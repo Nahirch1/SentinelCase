@@ -122,4 +122,218 @@ public sealed class GetIncidentsQueryHandlerTests
         Assert.False(result.HasNextPage);
         Assert.Single(result.Items);
     }
+
+    [Fact]
+    public async Task Handle_WithSeverityFilter_ShouldReturnOnlyMatchingIncidents()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+        var createdAt = DateTimeOffset.UtcNow;
+
+        var lowIncident = SecurityIncident.Create(
+            "Low severity incident",
+            "Low severity description.",
+            IncidentSeverity.Low,
+            createdAt.AddMinutes(-10),
+            createdAt);
+
+        var highIncident = SecurityIncident.Create(
+            "High severity incident",
+            "High severity description.",
+            IncidentSeverity.High,
+            createdAt.AddMinutes(-5),
+            createdAt.AddMinutes(1));
+
+        await repository.AddAsync(lowIncident);
+        await repository.AddAsync(highIncident);
+
+        var handler = new GetIncidentsQueryHandler(repository);
+        var query = new GetIncidentsQuery(
+            PageNumber: 1,
+            PageSize: 20,
+            Severity: IncidentSeverity.High);
+
+        var result = await handler.Handle(
+            query,
+            CancellationToken.None);
+
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(highIncident.Id, item.Id);
+        Assert.Equal(1, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task Handle_WithStatusFilter_ShouldReturnOnlyMatchingIncidents()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+        var createdAt = DateTimeOffset.UtcNow;
+
+        var openIncident = SecurityIncident.Create(
+            "Open incident",
+            "Open incident description.",
+            IncidentSeverity.Medium,
+            createdAt.AddMinutes(-10),
+            createdAt);
+
+        var investigationIncident = SecurityIncident.Create(
+            "Incident under investigation",
+            "Investigation description.",
+            IncidentSeverity.Medium,
+            createdAt.AddMinutes(-5),
+            createdAt.AddMinutes(1));
+
+        investigationIncident.StartInvestigation();
+
+        await repository.AddAsync(openIncident);
+        await repository.AddAsync(investigationIncident);
+
+        var handler = new GetIncidentsQueryHandler(repository);
+        var query = new GetIncidentsQuery(
+            PageNumber: 1,
+            PageSize: 20,
+            Status: IncidentStatus.UnderInvestigation);
+
+        var result = await handler.Handle(
+            query,
+            CancellationToken.None);
+
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(investigationIncident.Id, item.Id);
+        Assert.Equal(IncidentStatus.UnderInvestigation, item.Status);
+        Assert.Equal(1, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task Handle_WithSearchTermInTitle_ShouldReturnMatchingIncident()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+        var createdAt = DateTimeOffset.UtcNow;
+
+        var matchingIncident = SecurityIncident.Create(
+            "Suspicious PowerShell execution",
+            "Command execution detected.",
+            IncidentSeverity.High,
+            createdAt.AddMinutes(-10),
+            createdAt);
+
+        var otherIncident = SecurityIncident.Create(
+            "Failed login attempts",
+            "Several failed authentication attempts.",
+            IncidentSeverity.Medium,
+            createdAt.AddMinutes(-5),
+            createdAt.AddMinutes(1));
+
+        await repository.AddAsync(matchingIncident);
+        await repository.AddAsync(otherIncident);
+
+        var handler = new GetIncidentsQueryHandler(repository);
+        var query = new GetIncidentsQuery(
+            PageNumber: 1,
+            PageSize: 20,
+            SearchTerm: "powershell");
+
+        var result = await handler.Handle(
+            query,
+            CancellationToken.None);
+
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(matchingIncident.Id, item.Id);
+        Assert.Equal(1, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task Handle_WithSearchTermInDescription_ShouldReturnMatchingIncident()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+        var createdAt = DateTimeOffset.UtcNow;
+
+        var matchingIncident = SecurityIncident.Create(
+            "Suspicious process",
+            "Malware beacon traffic was detected.",
+            IncidentSeverity.Critical,
+            createdAt.AddMinutes(-10),
+            createdAt);
+
+        var otherIncident = SecurityIncident.Create(
+            "Account lockout",
+            "User account was automatically locked.",
+            IncidentSeverity.Low,
+            createdAt.AddMinutes(-5),
+            createdAt.AddMinutes(1));
+
+        await repository.AddAsync(matchingIncident);
+        await repository.AddAsync(otherIncident);
+
+        var handler = new GetIncidentsQueryHandler(repository);
+        var query = new GetIncidentsQuery(
+            PageNumber: 1,
+            PageSize: 20,
+            SearchTerm: "beacon");
+
+        var result = await handler.Handle(
+            query,
+            CancellationToken.None);
+
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(matchingIncident.Id, item.Id);
+        Assert.Equal(1, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task Handle_WithCombinedFilters_ShouldReturnOnlyMatchingIncident()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+        var createdAt = DateTimeOffset.UtcNow;
+
+        var matchingIncident = SecurityIncident.Create(
+            "Suspicious PowerShell execution",
+            "PowerShell command detected on endpoint.",
+            IncidentSeverity.High,
+            createdAt.AddMinutes(-10),
+            createdAt);
+
+        var wrongSeverityIncident = SecurityIncident.Create(
+            "PowerShell policy warning",
+            "PowerShell configuration warning.",
+            IncidentSeverity.Low,
+            createdAt.AddMinutes(-5),
+            createdAt.AddMinutes(1));
+
+        var wrongStatusIncident = SecurityIncident.Create(
+            "PowerShell investigation",
+            "PowerShell activity under investigation.",
+            IncidentSeverity.High,
+            createdAt,
+            createdAt.AddMinutes(2));
+
+        wrongStatusIncident.StartInvestigation();
+
+        await repository.AddAsync(matchingIncident);
+        await repository.AddAsync(wrongSeverityIncident);
+        await repository.AddAsync(wrongStatusIncident);
+
+        var handler = new GetIncidentsQueryHandler(repository);
+        var query = new GetIncidentsQuery(
+            PageNumber: 1,
+            PageSize: 20,
+            Status: IncidentStatus.Open,
+            Severity: IncidentSeverity.High,
+            SearchTerm: "PowerShell");
+
+        var result = await handler.Handle(
+            query,
+            CancellationToken.None);
+
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(matchingIncident.Id, item.Id);
+        Assert.Equal(1, result.TotalCount);
+        Assert.Equal(1, result.TotalPages);
+        Assert.False(result.HasPreviousPage);
+        Assert.False(result.HasNextPage);
+    }
+
 }

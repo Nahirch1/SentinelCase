@@ -1,6 +1,7 @@
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Application.Common.Models;
 using SentinelCase.Domain.Entities;
+using SentinelCase.Domain.Enums;
 
 namespace SentinelCase.UnitTests.TestDoubles;
 
@@ -30,9 +31,42 @@ internal sealed class FakeSecurityIncidentRepository
     public Task<PagedResult<SecurityIncident>> GetPagedAsync(
         int pageNumber,
         int pageSize,
+        IncidentStatus? status = null,
+        IncidentSeverity? severity = null,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default)
     {
-        var incidents = _incidents
+        IEnumerable<SecurityIncident> query = _incidents;
+
+        if (status.HasValue)
+        {
+            query = query.Where(
+                incident => incident.Status == status.Value);
+        }
+
+        if (severity.HasValue)
+        {
+            query = query.Where(
+                incident => incident.Severity == severity.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearchTerm = searchTerm.Trim();
+
+            query = query.Where(
+                incident =>
+                    incident.Title.Contains(
+                        normalizedSearchTerm,
+                        StringComparison.OrdinalIgnoreCase) ||
+                    incident.Description.Contains(
+                        normalizedSearchTerm,
+                        StringComparison.OrdinalIgnoreCase));
+        }
+
+        var filteredIncidents = query.ToArray();
+
+        var incidents = filteredIncidents
             .OrderByDescending(incident => incident.CreatedAt)
             .ThenByDescending(incident => incident.Id)
             .Skip((pageNumber - 1) * pageSize)
@@ -43,7 +77,7 @@ internal sealed class FakeSecurityIncidentRepository
             incidents,
             pageNumber,
             pageSize,
-            _incidents.Count);
+            filteredIncidents.Length);
 
         return Task.FromResult(result);
     }

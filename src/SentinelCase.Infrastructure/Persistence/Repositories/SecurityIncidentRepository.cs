@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Application.Common.Models;
 using SentinelCase.Domain.Entities;
+using SentinelCase.Domain.Enums;
 
 namespace SentinelCase.Infrastructure.Persistence.Repositories;
 
@@ -42,10 +43,36 @@ internal sealed class SecurityIncidentRepository
     public async Task<PagedResult<SecurityIncident>> GetPagedAsync(
         int pageNumber,
         int pageSize,
+        IncidentStatus? status = null,
+        IncidentSeverity? severity = null,
+        string? searchTerm = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.SecurityIncidents
-            .AsNoTracking();
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (status.HasValue)
+        {
+            query = query.Where(
+                incident => incident.Status == status.Value);
+        }
+
+        if (severity.HasValue)
+        {
+            query = query.Where(
+                incident => incident.Severity == severity.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalizedSearchTerm = searchTerm.Trim();
+
+            query = query.Where(
+                incident =>
+                    incident.Title.Contains(normalizedSearchTerm) ||
+                    incident.Description.Contains(normalizedSearchTerm));
+        }
 
         var totalCount = await query.CountAsync(cancellationToken);
 
