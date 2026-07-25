@@ -54,3 +54,5 @@ app.MapControllers();
 app.MapIncidentEndpoints();
 
 app.Run();
+
+public partial class Program;
