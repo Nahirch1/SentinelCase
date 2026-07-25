@@ -1,5 +1,6 @@
 using MediatR;
 
+using SentinelCase.Api.Common.Authorization;
 using SentinelCase.Application.Common.Models;
 using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
@@ -20,22 +21,32 @@ public static class IncidentEndpoints
 
         group.MapPost("/", CreateIncidentAsync)
             .WithName("CreateIncident")
+            .RequireAuthorization(AppPolicies.CanCreateIncident)
             .Produces<CreateIncidentResult>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .ProducesValidationProblem();
 
         group.MapGet("/", GetIncidentsAsync)
             .WithName("GetIncidents")
+            .RequireAuthorization()
             .Produces<PagedResult<GetIncidentsItem>>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
             .ProducesValidationProblem();
 
         group.MapGet("/{id:guid}", GetIncidentByIdAsync)
             .WithName("GetIncidentById")
+            .RequireAuthorization()
             .Produces<GetIncidentByIdResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
         group.MapPatch("/{id:guid}/status", ChangeIncidentStatusAsync)
             .WithName("ChangeIncidentStatus")
+            .RequireAuthorization(AppPolicies.CanManageIncidentStatus)
             .Produces<ChangeIncidentStatusResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
             .ProducesValidationProblem();
 
