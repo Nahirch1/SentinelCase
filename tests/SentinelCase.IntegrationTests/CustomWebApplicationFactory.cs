@@ -8,6 +8,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 using SentinelCase.Infrastructure.Persistence;
 using SentinelCase.IntegrationTests.Authentication;
@@ -28,6 +29,21 @@ public sealed class CustomWebApplicationFactory
             AddTestDatabase(services);
             AddTestAuthentication(services);
         });
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        var host = base.CreateHost(builder);
+
+        using var scope = host.Services.CreateScope();
+
+        var dbContext =
+            scope.ServiceProvider
+                .GetRequiredService<ApplicationDbContext>();
+
+        dbContext.Database.EnsureCreated();
+
+        return host;
     }
 
     private static void RemoveProductionDatabase(
