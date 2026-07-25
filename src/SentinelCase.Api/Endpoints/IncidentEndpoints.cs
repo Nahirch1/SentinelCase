@@ -1,6 +1,7 @@
 using MediatR;
 
 using SentinelCase.Application.Common.Models;
+using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidents;
@@ -31,6 +32,12 @@ public static class IncidentEndpoints
             .WithName("GetIncidentById")
             .Produces<GetIncidentByIdResult>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPatch("/{id:guid}/status", ChangeIncidentStatusAsync)
+            .WithName("ChangeIncidentStatus")
+            .Produces<ChangeIncidentStatusResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status404NotFound)
+            .ProducesValidationProblem();
 
         return endpoints;
     }
@@ -92,9 +99,31 @@ public static class IncidentEndpoints
             : Results.Ok(result);
     }
 
+    private static async Task<IResult> ChangeIncidentStatusAsync(
+        Guid id,
+        ChangeIncidentStatusRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new ChangeIncidentStatusCommand(
+            id,
+            request.Status);
+
+        var result = await sender.Send(
+            command,
+            cancellationToken);
+
+        return result is null
+            ? Results.NotFound()
+            : Results.Ok(result);
+    }
+
     public sealed record CreateIncidentRequest(
         string Title,
         string Description,
         IncidentSeverity Severity,
         DateTimeOffset DetectedAt);
+
+    public sealed record ChangeIncidentStatusRequest(
+        IncidentStatus Status);
 }

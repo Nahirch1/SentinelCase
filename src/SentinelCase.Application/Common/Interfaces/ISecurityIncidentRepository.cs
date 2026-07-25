@@ -14,6 +14,10 @@ public interface ISecurityIncidentRepository
         Guid id,
         CancellationToken cancellationToken = default);
 
+    Task UpdateAsync(
+        SecurityIncident incident,
+        CancellationToken cancellationToken = default);
+
     Task<PagedResult<SecurityIncident>> GetPagedAsync(
         int pageNumber,
         int pageSize,

@@ -28,6 +28,13 @@ internal sealed class FakeSecurityIncidentRepository
         return Task.FromResult(incident);
     }
 
+    public Task UpdateAsync(
+        SecurityIncident incident,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
+
     public Task<PagedResult<SecurityIncident>> GetPagedAsync(
         int pageNumber,
         int pageSize,

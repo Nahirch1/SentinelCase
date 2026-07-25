@@ -40,6 +40,15 @@ internal sealed class SecurityIncidentRepository
                 cancellationToken);
     }
 
+    public async Task UpdateAsync(
+        SecurityIncident incident,
+        CancellationToken cancellationToken = default)
+    {
+        _dbContext.SecurityIncidents.Update(incident);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<PagedResult<SecurityIncident>> GetPagedAsync(
         int pageNumber,
         int pageSize,
