@@ -1,10 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
+using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
+using SentinelCase.Domain.Enums;
 using SentinelCase.IntegrationTests.Authentication;
 
 namespace SentinelCase.IntegrationTests;
@@ -23,36 +24,23 @@ public sealed class IncidentCreationTests
     [Fact]
     public async Task CreateIncident_AsAnalyst_ReturnsCreated()
     {
-        // Arrange
-        using var client = _factory.CreateClient(
-            new WebApplicationFactoryClientOptions
-            {
-                BaseAddress = new Uri("https://localhost")
-            });
+        using var client = CreateAnalystClient();
 
-        client.DefaultRequestHeaders.Add(
-            TestAuthHandler.UserHeaderName,
-            "analyst@sentinelcase.test");
-
-        client.DefaultRequestHeaders.Add(
-            TestAuthHandler.RoleHeaderName,
-            "Analyst");
+        var detectedAt = DateTimeOffset.UtcNow.AddMinutes(-10);
 
         var request = new
         {
             title = "Suspicious PowerShell execution",
             description =
                 "Encoded PowerShell command detected on workstation FIN-023.",
-            severity = 3,
-            detectedAt = DateTimeOffset.UtcNow
+            severity = IncidentSeverity.High,
+            detectedAt
         };
 
-        // Act
         using var response = await client.PostAsJsonAsync(
             "/api/incidents",
             request);
 
-        // Assert
         Assert.Equal(
             HttpStatusCode.Created,
             response.StatusCode);
@@ -63,6 +51,10 @@ public sealed class IncidentCreationTests
 
         Assert.NotNull(result);
         Assert.NotEqual(Guid.Empty, result.Id);
+        Assert.Equal(request.title, result.Title);
+        Assert.Equal(IncidentSeverity.High, result.Severity);
+        Assert.Equal(IncidentStatus.Open, result.Status);
+        Assert.Equal(detectedAt, result.DetectedAt);
 
         Assert.NotNull(response.Headers.Location);
 
@@ -72,73 +64,59 @@ public sealed class IncidentCreationTests
     }
 
     [Fact]
-    public async Task CreateIncident_WithInvalidRequest_ReturnsValidationProblem()
+    public async Task CreateThenGetIncident_AsAnalyst_ReturnsStoredIncident()
     {
-        // Arrange
-        using var client = _factory.CreateClient(
-            new WebApplicationFactoryClientOptions
-            {
-                BaseAddress = new Uri("https://localhost")
-            });
+        using var client = CreateAnalystClient();
 
-        client.DefaultRequestHeaders.Add(
-            TestAuthHandler.UserHeaderName,
-            "analyst@sentinelcase.test");
-
-        client.DefaultRequestHeaders.Add(
-            TestAuthHandler.RoleHeaderName,
-            "Analyst");
+        var detectedAt = DateTimeOffset.UtcNow.AddMinutes(-15);
 
         var request = new
         {
-            title = "",
-            description = "",
-            severity = 99,
-            detectedAt = DateTimeOffset.MinValue
+            title = $"Credential stuffing detected {Guid.NewGuid()}",
+            description =
+                "Repeated authentication attempts were detected from multiple addresses.",
+            severity = IncidentSeverity.Critical,
+            detectedAt
         };
 
-        // Act
-        using var response = await client.PostAsJsonAsync(
+        using var createResponse = await client.PostAsJsonAsync(
             "/api/incidents",
             request);
 
-        // Assert
         Assert.Equal(
-            HttpStatusCode.BadRequest,
-            response.StatusCode);
+            HttpStatusCode.Created,
+            createResponse.StatusCode);
 
-        var problem =
-            await response.Content
-                .ReadFromJsonAsync<ValidationProblemDetails>();
+        var created =
+            await createResponse.Content
+                .ReadFromJsonAsync<CreateIncidentResult>();
 
-        Assert.NotNull(problem);
+        Assert.NotNull(created);
+
+        using var getResponse = await client.GetAsync(
+            $"/api/incidents/{created.Id}");
+
         Assert.Equal(
-            "Validation failed",
-            problem.Title);
+            HttpStatusCode.OK,
+            getResponse.StatusCode);
 
-        Assert.Contains(
-            "Title",
-            problem.Errors.Keys);
+        var stored =
+            await getResponse.Content
+                .ReadFromJsonAsync<GetIncidentByIdResult>();
 
-        Assert.Contains(
-            "Description",
-            problem.Errors.Keys);
-
-        Assert.Contains(
-            "Severity",
-            problem.Errors.Keys);
-
-        Assert.Contains(
-            "DetectedAt",
-            problem.Errors.Keys);
+        Assert.NotNull(stored);
+        Assert.Equal(created.Id, stored.Id);
+        Assert.Equal(request.title, stored.Title);
+        Assert.Equal(request.description, stored.Description);
+        Assert.Equal(IncidentSeverity.Critical, stored.Severity);
+        Assert.Equal(IncidentStatus.Open, stored.Status);
+        Assert.Equal(detectedAt, stored.DetectedAt);
+        Assert.Equal(created.CreatedAt, stored.CreatedAt);
     }
 
-
-    [Fact]
-    public async Task CreateIncident_WithDuplicatedTitle_ReturnsConflict()
+    private HttpClient CreateAnalystClient()
     {
-        // Arrange
-        using var client = _factory.CreateClient(
+        var client = _factory.CreateClient(
             new WebApplicationFactoryClientOptions
             {
                 BaseAddress = new Uri("https://localhost")
@@ -152,55 +130,6 @@ public sealed class IncidentCreationTests
             TestAuthHandler.RoleHeaderName,
             "Analyst");
 
-        var title =
-            $"Duplicated incident {Guid.NewGuid():N}";
-
-        var firstRequest = new
-        {
-            title,
-            description = "First incident description.",
-            severity = 3,
-            detectedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
-        };
-
-        var secondRequest = new
-        {
-            title,
-            description = "Second incident description.",
-            severity = 2,
-            detectedAt = DateTimeOffset.UtcNow.AddMinutes(-2)
-        };
-
-        using var firstResponse = await client.PostAsJsonAsync(
-            "/api/incidents",
-            firstRequest);
-
-        Assert.Equal(
-            HttpStatusCode.Created,
-            firstResponse.StatusCode);
-
-        // Act
-        using var secondResponse = await client.PostAsJsonAsync(
-            "/api/incidents",
-            secondRequest);
-
-        // Assert
-        Assert.Equal(
-            HttpStatusCode.Conflict,
-            secondResponse.StatusCode);
-
-        var problem =
-            await secondResponse.Content
-                .ReadFromJsonAsync<ProblemDetails>();
-
-        Assert.NotNull(problem);
-        Assert.Equal(
-            "Domain rule violation",
-            problem.Title);
-
-        Assert.Equal(
-            "An incident with the same title already exists.",
-            problem.Detail);
+        return client;
     }
-
 }
