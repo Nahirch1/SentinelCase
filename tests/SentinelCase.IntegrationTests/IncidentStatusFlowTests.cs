@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
@@ -96,6 +97,99 @@ public sealed class IncidentStatusFlowTests
         Assert.Equal(
             IncidentStatus.Closed,
             retrievedIncident.Status);
+    }
+
+
+    [Fact]
+    public async Task ChangeStatus_WithInvalidTransition_ReturnsConflict()
+    {
+        using var analystClient = CreateAuthenticatedClient(
+            "analyst@sentinelcase.test",
+            "Analyst");
+
+        using var managerClient = CreateAuthenticatedClient(
+            "manager@sentinelcase.test",
+            "SocManager");
+
+        var createRequest = new
+        {
+            title =
+                $"Invalid transition incident {Guid.NewGuid():N}",
+            description =
+                "Incident created to verify invalid transitions.",
+            severity = IncidentSeverity.High,
+            detectedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+        };
+
+        using var createResponse = await analystClient.PostAsJsonAsync(
+            "/api/incidents",
+            createRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            createResponse.StatusCode);
+
+        var createdIncident =
+            await createResponse.Content
+                .ReadFromJsonAsync<CreateIncidentResult>();
+
+        Assert.NotNull(createdIncident);
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/incidents/{createdIncident.Id}/status")
+        {
+            Content = JsonContent.Create(new
+            {
+                status = IncidentStatus.Contained
+            })
+        };
+
+        using var response = await managerClient.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
+
+        var problem =
+            await response.Content
+                .ReadFromJsonAsync<ProblemDetails>();
+
+        Assert.NotNull(problem);
+        Assert.Equal(
+            "Domain rule violation",
+            problem.Title);
+
+        Assert.Equal(
+            "Only an incident under investigation can be contained.",
+            problem.Detail);
+    }
+
+
+    [Fact]
+    public async Task ChangeStatus_WithUnknownIncident_ReturnsNotFound()
+    {
+        using var managerClient = CreateAuthenticatedClient(
+            "manager@sentinelcase.test",
+            "SocManager");
+
+        var incidentId = Guid.NewGuid();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Patch,
+            $"/api/incidents/{incidentId}/status")
+        {
+            Content = JsonContent.Create(new
+            {
+                status = IncidentStatus.UnderInvestigation
+            })
+        };
+
+        using var response = await managerClient.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            response.StatusCode);
     }
 
     private HttpClient CreateAuthenticatedClient(

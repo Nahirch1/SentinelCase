@@ -133,4 +133,74 @@ public sealed class IncidentCreationTests
             problem.Errors.Keys);
     }
 
+
+    [Fact]
+    public async Task CreateIncident_WithDuplicatedTitle_ReturnsConflict()
+    {
+        // Arrange
+        using var client = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost")
+            });
+
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserHeaderName,
+            "analyst@sentinelcase.test");
+
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.RoleHeaderName,
+            "Analyst");
+
+        var title =
+            $"Duplicated incident {Guid.NewGuid():N}";
+
+        var firstRequest = new
+        {
+            title,
+            description = "First incident description.",
+            severity = 3,
+            detectedAt = DateTimeOffset.UtcNow.AddMinutes(-5)
+        };
+
+        var secondRequest = new
+        {
+            title,
+            description = "Second incident description.",
+            severity = 2,
+            detectedAt = DateTimeOffset.UtcNow.AddMinutes(-2)
+        };
+
+        using var firstResponse = await client.PostAsJsonAsync(
+            "/api/incidents",
+            firstRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            firstResponse.StatusCode);
+
+        // Act
+        using var secondResponse = await client.PostAsJsonAsync(
+            "/api/incidents",
+            secondRequest);
+
+        // Assert
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            secondResponse.StatusCode);
+
+        var problem =
+            await secondResponse.Content
+                .ReadFromJsonAsync<ProblemDetails>();
+
+        Assert.NotNull(problem);
+        Assert.Equal(
+            "Domain rule violation",
+            problem.Title);
+
+        Assert.Equal(
+            "An incident with the same title already exists.",
+            problem.Detail);
+    }
+
 }
