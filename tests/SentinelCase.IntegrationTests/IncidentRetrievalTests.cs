@@ -115,4 +115,35 @@ public sealed class IncidentRetrievalTests
             createdIncident.CreatedAt,
             retrievedIncident.CreatedAt);
     }
+
+    [Fact]
+    public async Task GetIncident_WithUnknownId_ReturnsNotFound()
+    {
+        // Arrange
+        using var client = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost")
+            });
+
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserHeaderName,
+            "analyst@sentinelcase.test");
+
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.RoleHeaderName,
+            "Analyst");
+
+        var incidentId = Guid.NewGuid();
+
+        // Act
+        using var response = await client.GetAsync(
+            $"/api/incidents/{incidentId}");
+
+        // Assert
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            response.StatusCode);
+    }
+
 }

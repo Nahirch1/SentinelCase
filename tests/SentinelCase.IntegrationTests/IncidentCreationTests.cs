@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
@@ -69,4 +70,67 @@ public sealed class IncidentCreationTests
             $"/api/incidents/{result.Id}",
             response.Headers.Location.ToString());
     }
+
+    [Fact]
+    public async Task CreateIncident_WithInvalidRequest_ReturnsValidationProblem()
+    {
+        // Arrange
+        using var client = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions
+            {
+                BaseAddress = new Uri("https://localhost")
+            });
+
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserHeaderName,
+            "analyst@sentinelcase.test");
+
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.RoleHeaderName,
+            "Analyst");
+
+        var request = new
+        {
+            title = "",
+            description = "",
+            severity = 99,
+            detectedAt = DateTimeOffset.MinValue
+        };
+
+        // Act
+        using var response = await client.PostAsJsonAsync(
+            "/api/incidents",
+            request);
+
+        // Assert
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+
+        var problem =
+            await response.Content
+                .ReadFromJsonAsync<ValidationProblemDetails>();
+
+        Assert.NotNull(problem);
+        Assert.Equal(
+            "Validation failed",
+            problem.Title);
+
+        Assert.Contains(
+            "Title",
+            problem.Errors.Keys);
+
+        Assert.Contains(
+            "Description",
+            problem.Errors.Keys);
+
+        Assert.Contains(
+            "Severity",
+            problem.Errors.Keys);
+
+        Assert.Contains(
+            "DetectedAt",
+            problem.Errors.Keys);
+    }
+
 }
