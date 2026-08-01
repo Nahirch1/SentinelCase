@@ -29,4 +29,9 @@ public interface ISecurityIncidentRepository
     Task<bool> ExistsWithTitleAsync(
         string title,
         CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsWithTitleAsync(
+        string title,
+        Guid excludedIncidentId,
+        CancellationToken cancellationToken = default);
 }

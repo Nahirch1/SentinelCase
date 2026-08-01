@@ -31,23 +31,16 @@ public sealed class UpdateIncidentCommandHandler
 
         var normalizedTitle = request.Title.Trim();
 
-        var titleChanged = !string.Equals(
-            incident.Title,
-            normalizedTitle,
-            StringComparison.OrdinalIgnoreCase);
+        var titleAlreadyExists =
+            await _repository.ExistsWithTitleAsync(
+                normalizedTitle,
+                incident.Id,
+                cancellationToken);
 
-        if (titleChanged)
+        if (titleAlreadyExists)
         {
-            var titleAlreadyExists =
-                await _repository.ExistsWithTitleAsync(
-                    normalizedTitle,
-                    cancellationToken);
-
-            if (titleAlreadyExists)
-            {
-                throw new DomainException(
-                    "An incident with the same title already exists.");
-            }
+            throw new DomainException(
+                "An incident with the same title already exists.");
         }
 
         incident.UpdateDetails(
@@ -65,6 +58,9 @@ public sealed class UpdateIncidentCommandHandler
             incident.Title,
             incident.Description,
             incident.Severity,
-            incident.Status);
+            incident.Status,
+            incident.DetectedAt,
+            incident.CreatedAt,
+            incident.ClosedAt);
     }
 }

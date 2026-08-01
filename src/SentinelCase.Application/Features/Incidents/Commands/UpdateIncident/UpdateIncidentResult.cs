@@ -7,4 +7,7 @@ public sealed record UpdateIncidentResult(
     string Title,
     string Description,
     IncidentSeverity Severity,
-    IncidentStatus Status);
+    IncidentStatus Status,
+    DateTimeOffset DetectedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? ClosedAt);

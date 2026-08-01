@@ -109,4 +109,18 @@ internal sealed class SecurityIncidentRepository
                 incident => incident.Title == title,
                 cancellationToken);
     }
+
+    public Task<bool> ExistsWithTitleAsync(
+        string title,
+        Guid excludedIncidentId,
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.SecurityIncidents
+            .AsNoTracking()
+            .AnyAsync(
+                incident =>
+                    incident.Id != excludedIncidentId &&
+                    incident.Title == title,
+                cancellationToken);
+    }
 }

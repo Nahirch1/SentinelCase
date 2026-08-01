@@ -4,6 +4,7 @@ using SentinelCase.Api.Common.Authorization;
 using SentinelCase.Application.Common.Models;
 using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
+using SentinelCase.Application.Features.Incidents.Commands.UpdateIncident;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidents;
 using SentinelCase.Domain.Enums;
@@ -40,6 +41,15 @@ public static class IncidentEndpoints
             .Produces<GetIncidentByIdResult>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPut("/{id:guid}", UpdateIncidentAsync)
+            .WithName("UpdateIncident")
+            .RequireAuthorization(AppPolicies.CanCreateIncident)
+            .Produces<UpdateIncidentResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .ProducesValidationProblem();
 
         group.MapPatch("/{id:guid}/status", ChangeIncidentStatusAsync)
             .WithName("ChangeIncidentStatus")
@@ -110,6 +120,27 @@ public static class IncidentEndpoints
             : Results.Ok(result);
     }
 
+    private static async Task<IResult> UpdateIncidentAsync(
+        Guid id,
+        UpdateIncidentRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateIncidentCommand(
+            id,
+            request.Title,
+            request.Description,
+            request.Severity);
+
+        var result = await sender.Send(
+            command,
+            cancellationToken);
+
+        return result is null
+            ? Results.NotFound()
+            : Results.Ok(result);
+    }
+
     private static async Task<IResult> ChangeIncidentStatusAsync(
         Guid id,
         ChangeIncidentStatusRequest request,
@@ -134,6 +165,11 @@ public static class IncidentEndpoints
         string Description,
         IncidentSeverity Severity,
         DateTimeOffset DetectedAt);
+
+    public sealed record UpdateIncidentRequest(
+        string Title,
+        string Description,
+        IncidentSeverity Severity);
 
     public sealed record ChangeIncidentStatusRequest(
         IncidentStatus Status);

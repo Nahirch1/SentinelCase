@@ -101,4 +101,20 @@ internal sealed class FakeSecurityIncidentRepository
 
         return Task.FromResult(exists);
     }
+
+    public Task<bool> ExistsWithTitleAsync(
+        string title,
+        Guid excludedIncidentId,
+        CancellationToken cancellationToken = default)
+    {
+        var exists = _incidents.Any(
+            incident =>
+                incident.Id != excludedIncidentId &&
+                string.Equals(
+                    incident.Title,
+                    title,
+                    StringComparison.OrdinalIgnoreCase));
+
+        return Task.FromResult(exists);
+    }
 }
