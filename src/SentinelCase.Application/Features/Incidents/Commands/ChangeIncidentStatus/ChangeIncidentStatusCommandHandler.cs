@@ -1,6 +1,7 @@
 using MediatR;
 
 using SentinelCase.Application.Common.Interfaces;
+using SentinelCase.Domain.Entities;
 using SentinelCase.Domain.Enums;
 using SentinelCase.Domain.Exceptions;
 
@@ -12,13 +13,19 @@ public sealed class ChangeIncidentStatusCommandHandler
         ChangeIncidentStatusResult?>
 {
     private readonly ISecurityIncidentRepository _repository;
+    private readonly IIncidentHistoryRepository _historyRepository;
+    private readonly ICurrentUser _currentUser;
     private readonly TimeProvider _timeProvider;
 
     public ChangeIncidentStatusCommandHandler(
         ISecurityIncidentRepository repository,
+        IIncidentHistoryRepository historyRepository,
+        ICurrentUser currentUser,
         TimeProvider timeProvider)
     {
         _repository = repository;
+        _historyRepository = historyRepository;
+        _currentUser = currentUser;
         _timeProvider = timeProvider;
     }
 
@@ -43,6 +50,9 @@ public sealed class ChangeIncidentStatusCommandHandler
                 incident.ClosedAt);
         }
 
+        var previousStatus = incident.Status;
+        var occurredAt = _timeProvider.GetUtcNow();
+
         switch (request.Status)
         {
             case IncidentStatus.UnderInvestigation:
@@ -58,7 +68,7 @@ public sealed class ChangeIncidentStatusCommandHandler
                 break;
 
             case IncidentStatus.Closed:
-                incident.Close(_timeProvider.GetUtcNow());
+                incident.Close(occurredAt);
                 break;
 
             case IncidentStatus.Open:
@@ -72,6 +82,26 @@ public sealed class ChangeIncidentStatusCommandHandler
 
         await _repository.UpdateAsync(
             incident,
+            cancellationToken);
+
+        var eventType =
+            incident.Status == IncidentStatus.Closed
+                ? IncidentHistoryEventType.Closed
+                : IncidentHistoryEventType.StatusChanged;
+
+        var historyEntry = IncidentHistoryEntry.Create(
+            incident.Id,
+            eventType,
+            incident.Status == IncidentStatus.Closed
+                ? "The incident was closed."
+                : "The incident status was changed.",
+            previousValue: previousStatus.ToString(),
+            newValue: incident.Status.ToString(),
+            _currentUser.Identifier,
+            occurredAt);
+
+        await _historyRepository.AddAsync(
+            historyEntry,
             cancellationToken);
 
         return new ChangeIncidentStatusResult(

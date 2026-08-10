@@ -15,11 +15,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
     {
         var currentTime = CreateCurrentTime();
         var repository = new FakeSecurityIncidentRepository();
-        var timeProvider = new FakeTimeProvider(currentTime);
-
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            timeProvider);
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             Guid.NewGuid(),
@@ -41,9 +39,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            new FakeTimeProvider(currentTime));
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             incident.Id,
@@ -74,9 +72,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            new FakeTimeProvider(currentTime));
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             incident.Id,
@@ -104,9 +102,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            new FakeTimeProvider(currentTime));
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             incident.Id,
@@ -135,11 +133,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var timeProvider = new FakeTimeProvider(currentTime);
-
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            timeProvider);
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             incident.Id,
@@ -165,9 +161,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            new FakeTimeProvider(currentTime));
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             incident.Id,
@@ -192,9 +188,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            new FakeTimeProvider(currentTime));
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             incident.Id,
@@ -217,9 +213,9 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new ChangeIncidentStatusCommandHandler(
+        var handler = CreateHandler(
             repository,
-            new FakeTimeProvider(currentTime));
+            currentTime);
 
         var command = new ChangeIncidentStatusCommand(
             incident.Id,
@@ -235,6 +231,106 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
         Assert.Equal(
             IncidentStatus.UnderInvestigation,
             incident.Status);
+    }
+
+    [Fact]
+    public async Task Handle_WhenStatusChanges_ShouldAddStatusChangedHistory()
+    {
+        var currentTime = CreateCurrentTime();
+        var repository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var incident = CreateIncident(currentTime);
+
+        await repository.AddAsync(incident);
+
+        var handler = CreateHandler(
+            repository,
+            currentTime,
+            historyRepository);
+
+        var command = new ChangeIncidentStatusCommand(
+            incident.Id,
+            IncidentStatus.UnderInvestigation);
+
+        await handler.Handle(
+            command,
+            CancellationToken.None);
+
+        var historyEntry = Assert.Single(historyRepository.Entries);
+
+        Assert.Equal(
+            IncidentHistoryEventType.StatusChanged,
+            historyEntry.EventType);
+
+        Assert.Equal(
+            IncidentStatus.Open.ToString(),
+            historyEntry.PreviousValue);
+
+        Assert.Equal(
+            IncidentStatus.UnderInvestigation.ToString(),
+            historyEntry.NewValue);
+
+        Assert.Equal(
+            "analyst@sentinelcase.test",
+            historyEntry.PerformedBy);
+
+        Assert.Equal(
+            currentTime,
+            historyEntry.OccurredAt);
+    }
+
+    [Fact]
+    public async Task Handle_WhenIncidentCloses_ShouldAddClosedHistory()
+    {
+        var currentTime = CreateCurrentTime();
+        var repository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var incident = CreateIncident(currentTime);
+
+        incident.StartInvestigation();
+        incident.Contain();
+        incident.Resolve();
+
+        await repository.AddAsync(incident);
+
+        var handler = CreateHandler(
+            repository,
+            currentTime,
+            historyRepository);
+
+        var command = new ChangeIncidentStatusCommand(
+            incident.Id,
+            IncidentStatus.Closed);
+
+        await handler.Handle(
+            command,
+            CancellationToken.None);
+
+        var historyEntry = Assert.Single(historyRepository.Entries);
+
+        Assert.Equal(
+            IncidentHistoryEventType.Closed,
+            historyEntry.EventType);
+
+        Assert.Equal(
+            IncidentStatus.Resolved.ToString(),
+            historyEntry.PreviousValue);
+
+        Assert.Equal(
+            IncidentStatus.Closed.ToString(),
+            historyEntry.NewValue);
+    }
+
+    private static ChangeIncidentStatusCommandHandler CreateHandler(
+        FakeSecurityIncidentRepository repository,
+        DateTimeOffset currentTime,
+        FakeIncidentHistoryRepository? historyRepository = null)
+    {
+        return new ChangeIncidentStatusCommandHandler(
+            repository,
+            historyRepository ?? new FakeIncidentHistoryRepository(),
+            new FakeCurrentUser("analyst@sentinelcase.test"),
+            new FakeTimeProvider(currentTime));
     }
 
     private static SecurityIncident CreateIncident(

@@ -2,6 +2,7 @@ using MediatR;
 
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Domain.Entities;
+using SentinelCase.Domain.Enums;
 using SentinelCase.Domain.Exceptions;
 
 namespace SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
@@ -10,13 +11,19 @@ public sealed class CreateIncidentCommandHandler
     : IRequestHandler<CreateIncidentCommand, CreateIncidentResult>
 {
     private readonly ISecurityIncidentRepository _repository;
+    private readonly IIncidentHistoryRepository _historyRepository;
+    private readonly ICurrentUser _currentUser;
     private readonly TimeProvider _timeProvider;
 
     public CreateIncidentCommandHandler(
         ISecurityIncidentRepository repository,
+        IIncidentHistoryRepository historyRepository,
+        ICurrentUser currentUser,
         TimeProvider timeProvider)
     {
         _repository = repository;
+        _historyRepository = historyRepository;
+        _currentUser = currentUser;
         _timeProvider = timeProvider;
     }
 
@@ -24,9 +31,10 @@ public sealed class CreateIncidentCommandHandler
         CreateIncidentCommand request,
         CancellationToken cancellationToken)
     {
-        var titleAlreadyExists = await _repository.ExistsWithTitleAsync(
-            request.Title.Trim(),
-            cancellationToken);
+        var titleAlreadyExists =
+            await _repository.ExistsWithTitleAsync(
+                request.Title.Trim(),
+                cancellationToken);
 
         if (titleAlreadyExists)
         {
@@ -43,7 +51,22 @@ public sealed class CreateIncidentCommandHandler
             request.DetectedAt,
             createdAt);
 
-        await _repository.AddAsync(incident, cancellationToken);
+        await _repository.AddAsync(
+            incident,
+            cancellationToken);
+
+        var historyEntry = IncidentHistoryEntry.Create(
+            incident.Id,
+            IncidentHistoryEventType.Created,
+            "The incident was created.",
+            previousValue: null,
+            newValue: incident.Status.ToString(),
+            _currentUser.Identifier,
+            createdAt);
+
+        await _historyRepository.AddAsync(
+            historyEntry,
+            cancellationToken);
 
         return new CreateIncidentResult(
             incident.Id,

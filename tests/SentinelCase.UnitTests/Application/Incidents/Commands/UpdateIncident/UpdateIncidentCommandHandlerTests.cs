@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Time.Testing;
+
 using SentinelCase.Application.Features.Incidents.Commands.UpdateIncident;
 using SentinelCase.Domain.Entities;
 using SentinelCase.Domain.Enums;
@@ -16,7 +18,7 @@ public sealed class UpdateIncidentCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new UpdateIncidentCommandHandler(repository);
+        var handler = CreateHandler(repository);
 
         var command = new UpdateIncidentCommand(
             incident.Id,
@@ -44,7 +46,7 @@ public sealed class UpdateIncidentCommandHandlerTests
     public async Task Handle_WithUnknownIncident_ShouldReturnNull()
     {
         var repository = new FakeSecurityIncidentRepository();
-        var handler = new UpdateIncidentCommandHandler(repository);
+        var handler = CreateHandler(repository);
 
         var command = new UpdateIncidentCommand(
             Guid.NewGuid(),
@@ -76,7 +78,7 @@ public sealed class UpdateIncidentCommandHandlerTests
         await repository.AddAsync(incident);
         await repository.AddAsync(existingIncident);
 
-        var handler = new UpdateIncidentCommandHandler(repository);
+        var handler = CreateHandler(repository);
 
         var command = new UpdateIncidentCommand(
             incident.Id,
@@ -104,7 +106,7 @@ public sealed class UpdateIncidentCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new UpdateIncidentCommandHandler(repository);
+        var handler = CreateHandler(repository);
 
         var command = new UpdateIncidentCommand(
             incident.Id,
@@ -143,7 +145,7 @@ public sealed class UpdateIncidentCommandHandlerTests
 
         await repository.AddAsync(incident);
 
-        var handler = new UpdateIncidentCommandHandler(repository);
+        var handler = CreateHandler(repository);
 
         var command = new UpdateIncidentCommand(
             incident.Id,
@@ -157,6 +159,106 @@ public sealed class UpdateIncidentCommandHandlerTests
         Assert.Equal(
             "A closed incident cannot be modified.",
             exception.Message);
+    }
+
+    [Fact]
+    public async Task Handle_WhenDetailsChange_ShouldAddDetailsUpdatedHistory()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var incident = CreateIncident();
+
+        await repository.AddAsync(incident);
+
+        var handler = CreateHandler(
+            repository,
+            historyRepository);
+
+        var command = new UpdateIncidentCommand(
+            incident.Id,
+            "Updated suspicious activity",
+            "Updated incident description.",
+            incident.Severity);
+
+        await handler.Handle(
+            command,
+            CancellationToken.None);
+
+        var historyEntry = Assert.Single(historyRepository.Entries);
+
+        Assert.Equal(
+            IncidentHistoryEventType.DetailsUpdated,
+            historyEntry.EventType);
+
+        Assert.Equal(
+            "analyst@sentinelcase.test",
+            historyEntry.PerformedBy);
+
+        Assert.Contains(
+            "Suspicious endpoint activity",
+            historyEntry.PreviousValue);
+
+        Assert.Contains(
+            "Updated suspicious activity",
+            historyEntry.NewValue);
+    }
+
+    [Fact]
+    public async Task Handle_WhenSeverityChanges_ShouldAddSeverityChangedHistory()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var incident = CreateIncident();
+
+        await repository.AddAsync(incident);
+
+        var handler = CreateHandler(
+            repository,
+            historyRepository);
+
+        var command = new UpdateIncidentCommand(
+            incident.Id,
+            incident.Title,
+            incident.Description,
+            IncidentSeverity.Critical);
+
+        await handler.Handle(
+            command,
+            CancellationToken.None);
+
+        var historyEntry = Assert.Single(historyRepository.Entries);
+
+        Assert.Equal(
+            IncidentHistoryEventType.SeverityChanged,
+            historyEntry.EventType);
+
+        Assert.Equal(
+            IncidentSeverity.High.ToString(),
+            historyEntry.PreviousValue);
+
+        Assert.Equal(
+            IncidentSeverity.Critical.ToString(),
+            historyEntry.NewValue);
+    }
+
+    private static UpdateIncidentCommandHandler CreateHandler(
+        FakeSecurityIncidentRepository repository,
+        FakeIncidentHistoryRepository? historyRepository = null)
+    {
+        var currentTime = new DateTimeOffset(
+            2026,
+            7,
+            24,
+            20,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        return new UpdateIncidentCommandHandler(
+            repository,
+            historyRepository ?? new FakeIncidentHistoryRepository(),
+            new FakeCurrentUser("analyst@sentinelcase.test"),
+            new FakeTimeProvider(currentTime));
     }
 
     private static SecurityIncident CreateIncident()

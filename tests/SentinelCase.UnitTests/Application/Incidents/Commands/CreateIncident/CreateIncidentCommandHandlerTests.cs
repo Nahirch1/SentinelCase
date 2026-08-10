@@ -11,7 +11,7 @@ namespace SentinelCase.UnitTests.Application.Incidents.Commands.CreateIncident;
 public sealed class CreateIncidentCommandHandlerTests
 {
     [Fact]
-    public async Task Handle_WithValidCommand_ShouldCreateIncident()
+    public async Task Handle_WithValidCommand_ShouldCreateIncidentAndHistoryEntry()
     {
         var currentTime = new DateTimeOffset(
             2026,
@@ -24,9 +24,14 @@ public sealed class CreateIncidentCommandHandlerTests
 
         var timeProvider = new FakeTimeProvider(currentTime);
         var repository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var currentUser = new FakeCurrentUser(
+            "analyst@sentinelcase.test");
 
         var handler = new CreateIncidentCommandHandler(
             repository,
+            historyRepository,
+            currentUser,
             timeProvider);
 
         var command = new CreateIncidentCommand(
@@ -50,6 +55,25 @@ public sealed class CreateIncidentCommandHandlerTests
 
         Assert.Equal(result.Id, storedIncident.Id);
         Assert.Equal(currentTime, storedIncident.CreatedAt);
+
+        var historyEntry = Assert.Single(historyRepository.Entries);
+
+        Assert.NotEqual(Guid.Empty, historyEntry.Id);
+        Assert.Equal(result.Id, historyEntry.IncidentId);
+        Assert.Equal(
+            IncidentHistoryEventType.Created,
+            historyEntry.EventType);
+        Assert.Equal(
+            "The incident was created.",
+            historyEntry.Description);
+        Assert.Null(historyEntry.PreviousValue);
+        Assert.Equal(
+            IncidentStatus.Open.ToString(),
+            historyEntry.NewValue);
+        Assert.Equal(
+            "analyst@sentinelcase.test",
+            historyEntry.PerformedBy);
+        Assert.Equal(currentTime, historyEntry.OccurredAt);
     }
 
     [Fact]
@@ -66,6 +90,9 @@ public sealed class CreateIncidentCommandHandlerTests
 
         var timeProvider = new FakeTimeProvider(currentTime);
         var repository = new FakeSecurityIncidentRepository();
+        var historyRepository = new FakeIncidentHistoryRepository();
+        var currentUser = new FakeCurrentUser(
+            "analyst@sentinelcase.test");
 
         var existingIncident = SecurityIncident.Create(
             "Malware detected",
@@ -78,6 +105,8 @@ public sealed class CreateIncidentCommandHandlerTests
 
         var handler = new CreateIncidentCommandHandler(
             repository,
+            historyRepository,
+            currentUser,
             timeProvider);
 
         var command = new CreateIncidentCommand(
@@ -94,5 +123,6 @@ public sealed class CreateIncidentCommandHandlerTests
             exception.Message);
 
         Assert.Single(repository.Incidents);
+        Assert.Empty(historyRepository.Entries);
     }
 }

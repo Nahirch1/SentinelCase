@@ -6,6 +6,7 @@ using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
 using SentinelCase.Application.Features.Incidents.Commands.UpdateIncident;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
+using SentinelCase.Application.Features.Incidents.Queries.GetIncidentHistory;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidents;
 using SentinelCase.Domain.Enums;
 
@@ -39,6 +40,14 @@ public static class IncidentEndpoints
             .WithName("GetIncidentById")
             .RequireAuthorization()
             .Produces<GetIncidentByIdResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id:guid}/history", GetIncidentHistoryAsync)
+            .WithName("GetIncidentHistory")
+            .RequireAuthorization()
+            .Produces<IReadOnlyCollection<GetIncidentHistoryItem>>(
+                StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
 
@@ -110,6 +119,22 @@ public static class IncidentEndpoints
         CancellationToken cancellationToken)
     {
         var query = new GetIncidentByIdQuery(id);
+
+        var result = await sender.Send(
+            query,
+            cancellationToken);
+
+        return result is null
+            ? Results.NotFound()
+            : Results.Ok(result);
+    }
+
+    private static async Task<IResult> GetIncidentHistoryAsync(
+        Guid id,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetIncidentHistoryQuery(id);
 
         var result = await sender.Send(
             query,

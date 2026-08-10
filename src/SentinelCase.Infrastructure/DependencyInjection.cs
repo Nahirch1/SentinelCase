@@ -29,6 +29,10 @@ public static class DependencyInjection
             ISecurityIncidentRepository,
             SecurityIncidentRepository>();
 
+        services.AddScoped<
+            IIncidentHistoryRepository,
+            IncidentHistoryRepository>();
+
         services.AddSingleton(TimeProvider.System);
 
         return services;

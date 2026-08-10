@@ -2,14 +2,19 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 using SentinelCase.Api.Common.Authorization;
 using SentinelCase.Api.Common.ExceptionHandling;
+using SentinelCase.Api.Common.Identity;
 using SentinelCase.Api.Endpoints;
 using SentinelCase.Application;
+using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
