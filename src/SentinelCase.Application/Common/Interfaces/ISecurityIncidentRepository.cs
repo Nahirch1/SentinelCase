@@ -24,6 +24,7 @@ public interface ISecurityIncidentRepository
         IncidentStatus? status = null,
         IncidentSeverity? severity = null,
         string? searchTerm = null,
+        string? assignedTo = null,
         CancellationToken cancellationToken = default);
 
     Task<bool> ExistsWithTitleAsync(

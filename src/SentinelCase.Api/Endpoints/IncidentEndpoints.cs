@@ -106,6 +106,7 @@ public static class IncidentEndpoints
         IncidentStatus? status,
         IncidentSeverity? severity,
         string? searchTerm,
+        string? assignedTo,
         ISender sender,
         CancellationToken cancellationToken)
     {
@@ -114,7 +115,8 @@ public static class IncidentEndpoints
             pageSize,
             status,
             severity,
-            searchTerm);
+            searchTerm,
+            assignedTo);
 
         var result = await sender.Send(
             query,

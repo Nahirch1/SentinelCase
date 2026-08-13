@@ -132,6 +132,65 @@ public sealed class GetIncidentsQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WithAssignedToFilter_ShouldReturnOnlyAssignedIncidents()
+    {
+        var repository = new FakeSecurityIncidentRepository();
+
+        var createdAt = new DateTimeOffset(
+            2026,
+            8,
+            13,
+            16,
+            0,
+            0,
+            TimeSpan.Zero);
+
+        var matchingIncident = SecurityIncident.Create(
+            "Assigned incident",
+            "Incident assigned to the requested analyst.",
+            IncidentSeverity.High,
+            createdAt.AddMinutes(-20),
+            createdAt);
+
+        matchingIncident.AssignTo(
+            "analyst@sentinelcase.test",
+            createdAt.AddMinutes(5));
+
+        var otherIncident = SecurityIncident.Create(
+            "Other assigned incident",
+            "Incident assigned to another analyst.",
+            IncidentSeverity.Medium,
+            createdAt.AddMinutes(-15),
+            createdAt.AddMinutes(1));
+
+        otherIncident.AssignTo(
+            "other.analyst@sentinelcase.test",
+            createdAt.AddMinutes(6));
+
+        await repository.AddAsync(matchingIncident);
+        await repository.AddAsync(otherIncident);
+
+        var handler = new GetIncidentsQueryHandler(repository);
+
+        var query = new GetIncidentsQuery(
+            PageNumber: 1,
+            PageSize: 20,
+            AssignedTo: "analyst@sentinelcase.test");
+
+        var result = await handler.Handle(
+            query,
+            CancellationToken.None);
+
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(matchingIncident.Id, item.Id);
+        Assert.Equal(
+            "analyst@sentinelcase.test",
+            item.AssignedTo);
+        Assert.Equal(1, result.TotalCount);
+    }
+
+    [Fact]
     public async Task Handle_WithSeverityFilter_ShouldReturnOnlyMatchingIncidents()
     {
         var repository = new FakeSecurityIncidentRepository();

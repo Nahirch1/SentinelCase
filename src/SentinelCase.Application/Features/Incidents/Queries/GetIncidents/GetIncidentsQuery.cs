@@ -10,5 +10,6 @@ public sealed record GetIncidentsQuery(
     int PageSize = 20,
     IncidentStatus? Status = null,
     IncidentSeverity? Severity = null,
-    string? SearchTerm = null)
+    string? SearchTerm = null,
+    string? AssignedTo = null)
     : IRequest<PagedResult<GetIncidentsItem>>;

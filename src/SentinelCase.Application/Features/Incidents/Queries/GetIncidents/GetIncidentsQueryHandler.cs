@@ -26,6 +26,7 @@ public sealed class GetIncidentsQueryHandler
             request.Status,
             request.Severity,
             request.SearchTerm,
+            request.AssignedTo,
             cancellationToken);
 
         var items = result.Items

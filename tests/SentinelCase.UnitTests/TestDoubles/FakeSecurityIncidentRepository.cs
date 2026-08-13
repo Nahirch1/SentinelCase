@@ -41,6 +41,7 @@ internal sealed class FakeSecurityIncidentRepository
         IncidentStatus? status = null,
         IncidentSeverity? severity = null,
         string? searchTerm = null,
+        string? assignedTo = null,
         CancellationToken cancellationToken = default)
     {
         IEnumerable<SecurityIncident> query = _incidents;
@@ -69,6 +70,17 @@ internal sealed class FakeSecurityIncidentRepository
                     incident.Description.Contains(
                         normalizedSearchTerm,
                         StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.IsNullOrWhiteSpace(assignedTo))
+        {
+            var normalizedAssignedTo = assignedTo.Trim();
+
+            query = query.Where(
+                incident => string.Equals(
+                    incident.AssignedTo,
+                    normalizedAssignedTo,
+                    StringComparison.OrdinalIgnoreCase));
         }
 
         var filteredIncidents = query.ToArray();

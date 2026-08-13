@@ -55,6 +55,7 @@ internal sealed class SecurityIncidentRepository
         IncidentStatus? status = null,
         IncidentSeverity? severity = null,
         string? searchTerm = null,
+        string? assignedTo = null,
         CancellationToken cancellationToken = default)
     {
         var query = _dbContext.SecurityIncidents
@@ -83,14 +84,26 @@ internal sealed class SecurityIncidentRepository
                     incident.Description.Contains(normalizedSearchTerm));
         }
 
+        if (!string.IsNullOrWhiteSpace(assignedTo))
+        {
+            var normalizedAssignedTo = assignedTo.Trim();
+
+            query = query.Where(
+                incident =>
+                    incident.AssignedTo == normalizedAssignedTo);
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var incidents = await query
+        var filteredIncidents =
+            await query.ToListAsync(cancellationToken);
+
+        var incidents = filteredIncidents
             .OrderByDescending(incident => incident.CreatedAt)
             .ThenByDescending(incident => incident.Id)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(cancellationToken);
+            .ToArray();
 
         return new PagedResult<SecurityIncident>(
             incidents,

@@ -342,6 +342,92 @@ public sealed class IncidentAssignmentTests
             assignments[1].NewValue);
     }
 
+    [Fact]
+    public async Task GetIncidents_WithAssignedToFilter_ReturnsOnlyMatchingIncidents()
+    {
+        using var analystClient = CreateAuthenticatedClient(
+            "analyst@sentinelcase.test",
+            "Analyst");
+
+        using var managerClient = CreateAuthenticatedClient(
+            "manager@sentinelcase.test",
+            "SocManager");
+
+        async Task<Guid> CreateAndAssignAsync(
+            string title,
+            string assignedTo)
+        {
+            using var createResponse =
+                await analystClient.PostAsJsonAsync(
+                    "/api/incidents",
+                    new
+                    {
+                        title,
+                        description =
+                            "Incident created to verify assignment filtering.",
+                        severity = IncidentSeverity.Medium,
+                        detectedAt =
+                            DateTimeOffset.UtcNow.AddMinutes(-20)
+                    });
+
+            Assert.Equal(
+                HttpStatusCode.Created,
+                createResponse.StatusCode);
+
+            var created =
+                await createResponse.Content
+                    .ReadFromJsonAsync<CreateIncidentResult>();
+
+            Assert.NotNull(created);
+
+            using var assignResponse =
+                await managerClient.PatchAsJsonAsync(
+                    $"/api/incidents/{created.Id}/assignment",
+                    new
+                    {
+                        analystIdentifier = assignedTo
+                    });
+
+            Assert.Equal(
+                HttpStatusCode.OK,
+                assignResponse.StatusCode);
+
+            return created.Id;
+        }
+
+        var matchingId = await CreateAndAssignAsync(
+            $"Matching assignment {Guid.NewGuid():N}",
+            "filter.analyst@sentinelcase.test");
+
+        await CreateAndAssignAsync(
+            $"Other assignment {Guid.NewGuid():N}",
+            "other.analyst@sentinelcase.test");
+
+        using var response = await analystClient.GetAsync(
+            "/api/incidents?pageNumber=1&pageSize=20" +
+            "&assignedTo=filter.analyst@sentinelcase.test");
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var result =
+            await response.Content
+                .ReadFromJsonAsync<
+                    SentinelCase.Application.Common.Models.PagedResult<
+                        SentinelCase.Application.Features.Incidents.Queries.GetIncidents.GetIncidentsItem>>();
+
+        Assert.NotNull(result);
+
+        var item = Assert.Single(result.Items);
+
+        Assert.Equal(matchingId, item.Id);
+
+        Assert.Equal(
+            "filter.analyst@sentinelcase.test",
+            item.AssignedTo);
+    }
+
     private HttpClient CreateAuthenticatedClient(
         string username,
         string role)
