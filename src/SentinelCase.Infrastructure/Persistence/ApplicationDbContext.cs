@@ -17,6 +17,9 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<IncidentHistoryEntry> IncidentHistoryEntries =>
         Set<IncidentHistoryEntry>();
 
+    public DbSet<IncidentNote> IncidentNotes =>
+        Set<IncidentNote>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(

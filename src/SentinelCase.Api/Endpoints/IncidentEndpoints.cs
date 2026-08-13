@@ -2,12 +2,14 @@ using MediatR;
 
 using SentinelCase.Api.Common.Authorization;
 using SentinelCase.Application.Common.Models;
+using SentinelCase.Application.Features.Incidents.Commands.AddIncidentNote;
 using SentinelCase.Application.Features.Incidents.Commands.AssignIncident;
 using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
 using SentinelCase.Application.Features.Incidents.Commands.UpdateIncident;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentHistory;
+using SentinelCase.Application.Features.Incidents.Queries.GetIncidentNotes;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidents;
 using SentinelCase.Domain.Enums;
 
@@ -48,6 +50,22 @@ public static class IncidentEndpoints
             .WithName("GetIncidentHistory")
             .RequireAuthorization()
             .Produces<IReadOnlyCollection<GetIncidentHistoryItem>>(
+                StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{id:guid}/notes", AddIncidentNoteAsync)
+            .WithName("AddIncidentNote")
+            .RequireAuthorization()
+            .Produces<AddIncidentNoteResult>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status404NotFound)
+            .ProducesValidationProblem();
+
+        group.MapGet("/{id:guid}/notes", GetIncidentNotesAsync)
+            .WithName("GetIncidentNotes")
+            .RequireAuthorization()
+            .Produces<IReadOnlyCollection<GetIncidentNoteItem>>(
                 StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status404NotFound);
@@ -157,6 +175,43 @@ public static class IncidentEndpoints
             : Results.Ok(result);
     }
 
+    private static async Task<IResult> AddIncidentNoteAsync(
+        Guid id,
+        AddIncidentNoteRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new AddIncidentNoteCommand(
+            id,
+            request.Content);
+
+        var result = await sender.Send(
+            command,
+            cancellationToken);
+
+        return result is null
+            ? Results.NotFound()
+            : Results.Created(
+                $"/api/incidents/{id}/notes/{result.Id}",
+                result);
+    }
+
+    private static async Task<IResult> GetIncidentNotesAsync(
+        Guid id,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetIncidentNotesQuery(id);
+
+        var result = await sender.Send(
+            query,
+            cancellationToken);
+
+        return result is null
+            ? Results.NotFound()
+            : Results.Ok(result);
+    }
+
     private static async Task<IResult> UpdateIncidentAsync(
         Guid id,
         UpdateIncidentRequest request,
@@ -226,6 +281,9 @@ public static class IncidentEndpoints
         string Title,
         string Description,
         IncidentSeverity Severity);
+
+    public sealed record AddIncidentNoteRequest(
+        string Content);
 
     public sealed record AssignIncidentRequest(
         string AnalystIdentifier);
