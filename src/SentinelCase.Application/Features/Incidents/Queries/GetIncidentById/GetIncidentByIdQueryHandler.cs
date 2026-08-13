@@ -35,6 +35,8 @@ public sealed class GetIncidentByIdQueryHandler
             incident.Severity,
             incident.Status,
             incident.DetectedAt,
-            incident.CreatedAt);
+            incident.CreatedAt,
+            incident.AssignedTo,
+            incident.AssignedAt);
     }
 }

@@ -28,6 +28,12 @@ public sealed class GetIncidentByIdQueryHandlerTests
             createdAt.AddMinutes(-30),
             createdAt);
 
+        var assignedAt = createdAt.AddMinutes(5);
+
+        incident.AssignTo(
+            "analyst@sentinelcase.test",
+            assignedAt);
+
         await repository.AddAsync(incident);
 
         var handler = new GetIncidentByIdQueryHandler(repository);
@@ -45,6 +51,8 @@ public sealed class GetIncidentByIdQueryHandlerTests
         Assert.Equal(incident.Status, result.Status);
         Assert.Equal(incident.DetectedAt, result.DetectedAt);
         Assert.Equal(incident.CreatedAt, result.CreatedAt);
+        Assert.Equal(incident.AssignedTo, result.AssignedTo);
+        Assert.Equal(incident.AssignedAt, result.AssignedAt);
     }
 
     [Fact]

@@ -8,4 +8,6 @@ public sealed record GetIncidentsItem(
     IncidentSeverity Severity,
     IncidentStatus Status,
     DateTimeOffset DetectedAt,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string? AssignedTo,
+    DateTimeOffset? AssignedAt);

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 using SentinelCase.Application.Features.Incidents.Commands.AssignIncident;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
+using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentHistory;
 using SentinelCase.Domain.Enums;
 using SentinelCase.IntegrationTests.Authentication;
@@ -111,6 +112,83 @@ public sealed class IncidentAssignmentTests
         Assert.Equal(
             "manager@sentinelcase.test",
             assignedEntry.PerformedBy);
+    }
+
+    [Fact]
+    public async Task AssignedIncident_GetById_ShouldExposeAssignment()
+    {
+        using var analystClient = CreateAuthenticatedClient(
+            "analyst@sentinelcase.test",
+            "Analyst");
+
+        using var managerClient = CreateAuthenticatedClient(
+            "manager@sentinelcase.test",
+            "SocManager");
+
+        var createRequest = new
+        {
+            title = $"Readable assignment incident {Guid.NewGuid():N}",
+            description =
+                "Incident created to verify assignment fields in retrieval.",
+            severity = IncidentSeverity.High,
+            detectedAt = DateTimeOffset.UtcNow.AddMinutes(-20)
+        };
+
+        using var createResponse =
+            await analystClient.PostAsJsonAsync(
+                "/api/incidents",
+                createRequest);
+
+        Assert.Equal(
+            HttpStatusCode.Created,
+            createResponse.StatusCode);
+
+        var created =
+            await createResponse.Content
+                .ReadFromJsonAsync<CreateIncidentResult>();
+
+        Assert.NotNull(created);
+
+        using var assignResponse =
+            await managerClient.PatchAsJsonAsync(
+                $"/api/incidents/{created.Id}/assignment",
+                new
+                {
+                    analystIdentifier =
+                        "assigned.analyst@sentinelcase.test"
+                });
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            assignResponse.StatusCode);
+
+        var assigned =
+            await assignResponse.Content
+                .ReadFromJsonAsync<AssignIncidentResult>();
+
+        Assert.NotNull(assigned);
+
+        using var getResponse =
+            await analystClient.GetAsync(
+                $"/api/incidents/{created.Id}");
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            getResponse.StatusCode);
+
+        var incident =
+            await getResponse.Content
+                .ReadFromJsonAsync<GetIncidentByIdResult>();
+
+        Assert.NotNull(incident);
+
+        Assert.Equal(
+            "assigned.analyst@sentinelcase.test",
+            incident.AssignedTo);
+
+        Assert.Equal(
+            assigned.AssignedAt,
+            incident.AssignedAt);
     }
 
     [Fact]

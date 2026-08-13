@@ -35,7 +35,9 @@ public sealed class GetIncidentsQueryHandler
                 incident.Severity,
                 incident.Status,
                 incident.DetectedAt,
-                incident.CreatedAt))
+                incident.CreatedAt,
+                incident.AssignedTo,
+                incident.AssignedAt))
             .ToArray();
 
         return new PagedResult<GetIncidentsItem>(

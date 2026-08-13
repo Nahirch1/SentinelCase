@@ -45,6 +45,12 @@ public sealed class GetIncidentsQueryHandlerTests
             thirdCreatedAt.AddMinutes(-10),
             thirdCreatedAt);
 
+        var assignedAt = thirdCreatedAt.AddMinutes(5);
+
+        thirdIncident.AssignTo(
+            "analyst@sentinelcase.test",
+            assignedAt);
+
         await repository.AddAsync(firstIncident);
         await repository.AddAsync(secondIncident);
         await repository.AddAsync(thirdIncident);
@@ -77,6 +83,8 @@ public sealed class GetIncidentsQueryHandlerTests
         Assert.Equal(thirdIncident.Status, items[0].Status);
         Assert.Equal(thirdIncident.DetectedAt, items[0].DetectedAt);
         Assert.Equal(thirdIncident.CreatedAt, items[0].CreatedAt);
+        Assert.Equal(thirdIncident.AssignedTo, items[0].AssignedTo);
+        Assert.Equal(thirdIncident.AssignedAt, items[0].AssignedAt);
     }
 
     [Fact]
