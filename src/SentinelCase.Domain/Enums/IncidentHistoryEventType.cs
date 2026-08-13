@@ -6,5 +6,6 @@ public enum IncidentHistoryEventType
     DetailsUpdated = 2,
     SeverityChanged = 3,
     StatusChanged = 4,
-    Closed = 5
+    Closed = 5,
+    Assigned = 6
 }

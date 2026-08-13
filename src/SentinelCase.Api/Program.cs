@@ -32,6 +32,11 @@ builder.Services
         AppPolicies.CanManageIncidentStatus,
         policy => policy.RequireRole(
             AppRoles.SocManager,
+            AppRoles.Administrator))
+    .AddPolicy(
+        AppPolicies.CanAssignIncident,
+        policy => policy.RequireRole(
+            AppRoles.SocManager,
             AppRoles.Administrator));
 
 builder.Services.AddProblemDetails();

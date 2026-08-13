@@ -41,6 +41,11 @@ internal sealed class SecurityIncidentConfiguration
 
         builder.Property(incident => incident.ClosedAt);
 
+        builder.Property(incident => incident.AssignedTo)
+            .HasMaxLength(200);
+
+        builder.Property(incident => incident.AssignedAt);
+
         builder.HasIndex(incident => incident.Title)
             .IsUnique();
 
@@ -49,5 +54,7 @@ internal sealed class SecurityIncidentConfiguration
         builder.HasIndex(incident => incident.Severity);
 
         builder.HasIndex(incident => incident.CreatedAt);
+
+        builder.HasIndex(incident => incident.AssignedTo);
     }
 }

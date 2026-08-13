@@ -45,6 +45,10 @@ public sealed class SecurityIncident
 
     public DateTimeOffset? ClosedAt { get; private set; }
 
+    public string? AssignedTo { get; private set; }
+
+    public DateTimeOffset? AssignedAt { get; private set; }
+
     public static SecurityIncident Create(
         string title,
         string description,
@@ -128,6 +132,34 @@ public sealed class SecurityIncident
 
         Status = IncidentStatus.Closed;
         ClosedAt = closedAt;
+    }
+
+    public void AssignTo(
+        string analystIdentifier,
+        DateTimeOffset assignedAt)
+    {
+        EnsureNotClosed();
+
+        if (string.IsNullOrWhiteSpace(analystIdentifier))
+        {
+            throw new DomainException(
+                "The analyst identifier is required.");
+        }
+
+        if (analystIdentifier.Trim().Length > 200)
+        {
+            throw new DomainException(
+                "The analyst identifier cannot exceed 200 characters.");
+        }
+
+        if (assignedAt < CreatedAt)
+        {
+            throw new DomainException(
+                "The assignment date cannot be earlier than the creation date.");
+        }
+
+        AssignedTo = analystIdentifier.Trim();
+        AssignedAt = assignedAt;
     }
 
     public void ChangeSeverity(IncidentSeverity severity)

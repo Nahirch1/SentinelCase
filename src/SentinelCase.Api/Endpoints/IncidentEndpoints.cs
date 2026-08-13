@@ -2,6 +2,7 @@ using MediatR;
 
 using SentinelCase.Api.Common.Authorization;
 using SentinelCase.Application.Common.Models;
+using SentinelCase.Application.Features.Incidents.Commands.AssignIncident;
 using SentinelCase.Application.Features.Incidents.Commands.ChangeIncidentStatus;
 using SentinelCase.Application.Features.Incidents.Commands.CreateIncident;
 using SentinelCase.Application.Features.Incidents.Commands.UpdateIncident;
@@ -55,6 +56,15 @@ public static class IncidentEndpoints
             .WithName("UpdateIncident")
             .RequireAuthorization(AppPolicies.CanCreateIncident)
             .Produces<UpdateIncidentResult>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound)
+            .ProducesValidationProblem();
+
+        group.MapPatch("/{id:guid}/assignment", AssignIncidentAsync)
+            .WithName("AssignIncident")
+            .RequireAuthorization(AppPolicies.CanAssignIncident)
+            .Produces<AssignIncidentResult>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden)
             .Produces(StatusCodes.Status404NotFound)
@@ -166,6 +176,25 @@ public static class IncidentEndpoints
             : Results.Ok(result);
     }
 
+    private static async Task<IResult> AssignIncidentAsync(
+        Guid id,
+        AssignIncidentRequest request,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var command = new AssignIncidentCommand(
+            id,
+            request.AnalystIdentifier);
+
+        var result = await sender.Send(
+            command,
+            cancellationToken);
+
+        return result is null
+            ? Results.NotFound()
+            : Results.Ok(result);
+    }
+
     private static async Task<IResult> ChangeIncidentStatusAsync(
         Guid id,
         ChangeIncidentStatusRequest request,
@@ -195,6 +224,9 @@ public static class IncidentEndpoints
         string Title,
         string Description,
         IncidentSeverity Severity);
+
+    public sealed record AssignIncidentRequest(
+        string AnalystIdentifier);
 
     public sealed record ChangeIncidentStatusRequest(
         IncidentStatus Status);
