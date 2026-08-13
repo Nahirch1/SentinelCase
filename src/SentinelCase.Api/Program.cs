@@ -1,3 +1,5 @@
+using Serilog;
+using Serilog.Events;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
@@ -10,6 +12,19 @@ using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSerilog((services, configuration) =>
+    configuration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override(
+            "Microsoft.AspNetCore",
+            LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .WriteTo.Console(
+            outputTemplate:
+                "[{Timestamp:HH:mm:ss} {Level:u3}] " +
+                "[TraceId:{TraceId}] [User:{User}] " +
+                "{Message:lj}{NewLine}{Exception}"));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -54,6 +69,23 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (
+        diagnosticContext,
+        httpContext) =>
+    {
+        diagnosticContext.Set(
+            "TraceId",
+            httpContext.TraceIdentifier);
+
+        diagnosticContext.Set(
+            "User",
+            httpContext.User.Identity?.Name
+                ?? "anonymous");
+    };
+});
 
 if (app.Environment.IsDevelopment())
 {
