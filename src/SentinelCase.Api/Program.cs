@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Serilog;
 using Serilog.Events;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -34,6 +35,33 @@ builder.Services
     .AddDbContextCheck<
         SentinelCase.Infrastructure.Persistence.ApplicationDbContext>(
         "database");
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode =
+        StatusCodes.Status429TooManyRequests;
+
+    options.GlobalLimiter =
+        PartitionedRateLimiter.Create<HttpContext, string>(
+            httpContext =>
+            {
+                var partitionKey =
+                    httpContext.Connection.RemoteIpAddress?
+                        .ToString()
+                    ?? "unknown";
+
+                return RateLimitPartition
+                    .GetFixedWindowLimiter(
+                        partitionKey,
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 100,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        });
+            });
+});
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
@@ -95,6 +123,8 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();
