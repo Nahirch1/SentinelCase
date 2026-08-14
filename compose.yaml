@@ -31,6 +31,36 @@ services:
       retries: 12
       start_period: 30s
 
+  api:
+    image: sentinelcase-api:local
+    container_name: sentinelcase-api
+    restart: unless-stopped
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:8080"
+
+      ConnectionStrings__DefaultConnection: >
+        Server=sqlserver,1433;
+        Database=SentinelCaseDb;
+        User Id=sa;
+        Password=${MSSQL_SA_PASSWORD};
+        TrustServerCertificate=True;
+        Encrypt=True;
+
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
 volumes:
   sentinelcase-sqlserver-data:
     name: sentinelcase-sqlserver-data
