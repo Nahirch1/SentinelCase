@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { getApiToken } from '../auth/token'
 
 import { getIncidents } from '../api/incidents'
 import { IncidentRow } from '../components/IncidentRow'
@@ -27,7 +28,7 @@ export function DashboardPage({
 
   useEffect(() => {
     const token =
-      import.meta.env.VITE_API_TOKEN
+      getApiToken()
 
     getIncidents(
       {
@@ -84,6 +85,10 @@ export function DashboardPage({
 
   return (
     <>
+      <div className="dashboard-note">
+        Resumen calculado sobre los incidentes cargados en esta vista.
+      </div>
+
       <section className="dashboard-grid">
         <div className="dashboard-card">
           <span>Abiertos</span>

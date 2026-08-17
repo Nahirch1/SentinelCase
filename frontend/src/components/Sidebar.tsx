@@ -1,3 +1,5 @@
+import { ApiAccess } from './ApiAccess'
+
 export type AppPage =
   | 'dashboard'
   | 'incidents'
@@ -55,6 +57,8 @@ export function Sidebar({
           Nuevo incidente
         </button>
       </nav>
+
+      <ApiAccess />
     </aside>
   )
 }

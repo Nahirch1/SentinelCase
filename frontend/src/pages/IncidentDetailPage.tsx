@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getApiToken } from '../auth/token'
 
 import {
   addIncidentNote,
@@ -115,7 +116,7 @@ export function IncidentDetailPage({
     useState<string | null>(null)
 
   useEffect(() => {
-    const token = import.meta.env.VITE_API_TOKEN
+    const token = getApiToken()
 
     setLoading(true)
 
@@ -147,7 +148,7 @@ export function IncidentDetailPage({
   }, [incidentId])
 
   async function refreshIncident() {
-    const token = import.meta.env.VITE_API_TOKEN
+    const token = getApiToken()
 
     const [
       incidentResult,
@@ -175,7 +176,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = import.meta.env.VITE_API_TOKEN
+      const token = getApiToken()
 
       await updateIncident(
         incidentId,
@@ -208,7 +209,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = import.meta.env.VITE_API_TOKEN
+      const token = getApiToken()
 
       await assignIncident(
         incidentId,
@@ -243,7 +244,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = import.meta.env.VITE_API_TOKEN
+      const token = getApiToken()
 
       await changeIncidentStatus(
         incidentId,
@@ -273,7 +274,7 @@ export function IncidentDetailPage({
     }
 
     try {
-      const token = import.meta.env.VITE_API_TOKEN
+      const token = getApiToken()
 
       await addIncidentNote(
         incidentId,

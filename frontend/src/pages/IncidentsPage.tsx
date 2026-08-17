@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { getApiToken } from '../auth/token'
 
 import { getIncidents } from '../api/incidents'
 import { IncidentRow } from '../components/IncidentRow'
@@ -50,7 +51,7 @@ export function IncidentsPage({
 
   useEffect(() => {
     const token =
-      import.meta.env.VITE_API_TOKEN
+      getApiToken()
 
     setLoading(true)
 

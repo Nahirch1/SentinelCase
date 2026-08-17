@@ -725,3 +725,68 @@
 .next-status-preview strong {
   color: #d8ded9;
 }
+
+.dashboard-note {
+  margin: 18px 18px 0;
+  color: #7f8881;
+  font-size: 11px;
+}
+
+.api-access {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #343a36;
+}
+
+.api-access-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #7f8881;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.api-access-header strong {
+  color: #9bc9a8;
+  font-weight: 600;
+}
+
+.api-access input {
+  width: 100%;
+  border: 1px solid #3a403c;
+  border-radius: 3px;
+  background: #171b18;
+  color: #d7ddd8;
+  padding: 7px 8px;
+  font-size: 11px;
+  outline: none;
+}
+
+.api-access input:focus {
+  border-color: #4f7659;
+}
+
+.api-access-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.api-access-actions button {
+  flex: 1;
+  border: 1px solid #3a403c;
+  border-radius: 3px;
+  background: #252a26;
+  color: #aeb6b0;
+  padding: 6px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.api-access-actions button:hover {
+  border-color: #4f7659;
+  background: #2b322c;
+}

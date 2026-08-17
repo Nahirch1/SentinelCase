@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getApiToken } from '../auth/token'
 
 import { createIncident } from '../api/incidents'
 import { IncidentSeverity } from '../types/incidents'
@@ -38,7 +39,7 @@ export function NewIncidentPage({
       setSaving(true)
       setError(null)
 
-      const token = import.meta.env.VITE_API_TOKEN
+      const token = getApiToken()
 
       const result = await createIncident(
         {
