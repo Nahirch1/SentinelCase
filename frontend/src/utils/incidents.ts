@@ -74,3 +74,20 @@ export function getStatusClass(
       return ''
   }
 }
+
+export function getNextIncidentStatus(
+  status: number,
+): number | null {
+  switch (status) {
+    case IncidentStatus.Open:
+      return IncidentStatus.UnderInvestigation
+    case IncidentStatus.UnderInvestigation:
+      return IncidentStatus.Contained
+    case IncidentStatus.Contained:
+      return IncidentStatus.Resolved
+    case IncidentStatus.Resolved:
+      return IncidentStatus.Closed
+    default:
+      return null
+  }
+}

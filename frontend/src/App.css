@@ -713,3 +713,15 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.next-status-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8f9992;
+  font-size: 12px;
+}
+
+.next-status-preview strong {
+  color: #d8ded9;
+}

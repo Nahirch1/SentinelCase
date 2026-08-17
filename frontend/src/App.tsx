@@ -18,15 +18,17 @@ function App() {
   const [selectedIncidentId, setSelectedIncidentId] =
     useState<string | null>(null)
 
-  const pageTitle =
-    activePage === 'dashboard'
+  const pageTitle = selectedIncidentId
+    ? 'Detalle del incidente'
+    : activePage === 'dashboard'
       ? 'Resumen'
       : activePage === 'incidents'
         ? 'Incidentes'
         : 'Nuevo incidente'
 
-  const pageDescription =
-    activePage === 'dashboard'
+  const pageDescription = selectedIncidentId
+    ? 'Información, trazabilidad y acciones sobre el incidente.'
+    : activePage === 'dashboard'
       ? 'Gestión y seguimiento de incidentes de seguridad.'
       : activePage === 'incidents'
         ? 'Consulta, búsqueda y filtrado de incidentes.'
@@ -36,7 +38,10 @@ function App() {
     <div className="app-shell">
       <Sidebar
         activePage={activePage}
-        onNavigate={setActivePage}
+        onNavigate={(page) => {
+          setSelectedIncidentId(null)
+          setActivePage(page)
+        }}
       />
 
       <main className="main-content">
@@ -63,14 +68,14 @@ function App() {
                 onOpenIncident={setSelectedIncidentId}
               />
             )}
-          </>
-        )}
 
             {activePage === 'new-incident' && (
               <NewIncidentPage
                 onCreated={setSelectedIncidentId}
               />
             )}
+          </>
+        )}
       </main>
     </div>
   )

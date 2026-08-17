@@ -18,6 +18,11 @@ import {
   type IncidentNoteItem,
 } from '../types/incidents'
 
+import {
+  getNextIncidentStatus,
+  getStatusLabel,
+} from '../utils/incidents'
+
 interface IncidentDetailPageProps {
   incidentId: string
   onBack: () => void
@@ -226,8 +231,13 @@ export function IncidentDetailPage({
     }
   }
 
-  async function handleStatusChange() {
-    if (!newStatus) {
+  async function handleStatusChange(
+    targetStatus?: number,
+  ) {
+    const statusToApply =
+      targetStatus ?? Number(newStatus)
+
+    if (!statusToApply) {
       setActionError('Seleccioná un estado.')
       return
     }
@@ -237,7 +247,7 @@ export function IncidentDetailPage({
 
       await changeIncidentStatus(
         incidentId,
-        Number(newStatus),
+        statusToApply,
         token,
       )
 
@@ -476,35 +486,39 @@ export function IncidentDetailPage({
               Cambiar estado
             </span>
 
-            <select
-              value={newStatus}
-              onChange={(event) =>
-                setNewStatus(event.target.value)
-              }
-            >
-              <option value="">
-                Seleccionar estado
-              </option>
-              <option value={IncidentStatus.UnderInvestigation}>
-                En investigación
-              </option>
-              <option value={IncidentStatus.Contained}>
-                Contenido
-              </option>
-              <option value={IncidentStatus.Resolved}>
-                Resuelto
-              </option>
-              <option value={IncidentStatus.Closed}>
-                Cerrado
-              </option>
-            </select>
+            {(() => {
+              const nextStatus = getNextIncidentStatus(
+                incident.status,
+              )
 
-            <button
-              type="button"
-              onClick={handleStatusChange}
-            >
-              Actualizar
-            </button>
+              if (nextStatus === null) {
+                return (
+                  <div className="status-message">
+                    El incidente ya se encuentra cerrado.
+                  </div>
+                )
+              }
+
+              return (
+                <>
+                  <div className="next-status-preview">
+                    Próximo estado:
+                    <strong>
+                      {getStatusLabel(nextStatus)}
+                    </strong>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleStatusChange(nextStatus)
+                    }}
+                  >
+                    Avanzar estado
+                  </button>
+                </>
+              )
+            })()}
           </div>
 
           <div className="action-box action-box-wide">

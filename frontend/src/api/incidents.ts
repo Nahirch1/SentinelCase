@@ -1,10 +1,60 @@
 import type {
+  IncidentDetail,
+  IncidentHistoryItem,
   IncidentListItem,
+  IncidentNoteItem,
   PagedResult,
 } from '../types/incidents'
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5106'
+
+async function throwApiError(
+  response: Response,
+  fallbackMessage: string,
+): Promise<never> {
+  let detail: string | null = null
+
+  try {
+    const body = await response.json()
+
+    if (typeof body?.detail === 'string') {
+      detail = body.detail
+    } else if (typeof body?.title === 'string') {
+      detail = body.title
+    }
+  } catch {
+    detail = null
+  }
+
+  if (response.status === 401) {
+    throw new Error('La sesión de desarrollo no es válida o expiró.')
+  }
+
+  if (response.status === 403) {
+    throw new Error('No tenés permisos para realizar esta acción.')
+  }
+
+  if (response.status === 404) {
+    throw new Error('El recurso solicitado no existe.')
+  }
+
+  if (response.status === 409) {
+    throw new Error(
+      detail ?? 'La operación entra en conflicto con el estado actual.',
+    )
+  }
+
+  if (response.status === 429) {
+    throw new Error(
+      'Se alcanzó el límite de solicitudes. Intentá nuevamente en unos segundos.',
+    )
+  }
+
+  throw new Error(
+    detail ?? `${fallbackMessage} (${response.status}).`,
+  )
+}
 
 export interface GetIncidentsParams {
   pageNumber?: number
@@ -71,19 +121,15 @@ export async function getIncidents(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudieron obtener los incidentes (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudieron obtener los incidentes',
     )
   }
 
   return response.json()
 }
 
-import type {
-  IncidentDetail,
-  IncidentHistoryItem,
-  IncidentNoteItem,
-} from '../types/incidents'
 
 export async function getIncidentById(
   id: string,
@@ -101,8 +147,9 @@ export async function getIncidentById(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudo obtener el incidente (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudo obtener el incidente',
     )
   }
 
@@ -125,8 +172,9 @@ export async function getIncidentHistory(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudo obtener el historial (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudo obtener el historial',
     )
   }
 
@@ -149,8 +197,9 @@ export async function getIncidentNotes(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudieron obtener las notas (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudieron obtener las notas',
     )
   }
 
@@ -181,8 +230,9 @@ export async function assignIncident(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudo asignar el incidente (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudo asignar el incidente',
     )
   }
 }
@@ -211,8 +261,9 @@ export async function changeIncidentStatus(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudo cambiar el estado (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudo cambiar el estado',
     )
   }
 }
@@ -241,8 +292,9 @@ export async function addIncidentNote(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudo agregar la nota (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudo agregar la nota',
     )
   }
 }
@@ -279,8 +331,9 @@ export async function createIncident(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudo crear el incidente (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudo crear el incidente',
     )
   }
 
@@ -315,8 +368,9 @@ export async function updateIncident(
   )
 
   if (!response.ok) {
-    throw new Error(
-      `No se pudo actualizar el incidente (${response.status}).`,
+    await throwApiError(
+      response,
+      'No se pudo actualizar el incidente',
     )
   }
 }
