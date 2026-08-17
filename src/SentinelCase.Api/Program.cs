@@ -82,6 +82,17 @@ builder.Services
             .AddRuntimeInstrumentation()
             .AddOtlpExporter());
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        "Frontend",
+        policy =>
+            policy
+                .WithOrigins("http://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod());
+});
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
@@ -144,6 +155,8 @@ app.UseExceptionHandler();
 app.UseHttpsRedirection();
 
 app.UseRateLimiter();
+
+app.UseCors("Frontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
