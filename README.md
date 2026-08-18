@@ -1,6 +1,6 @@
 # Sistema Centinela
 
-**Sistema Centinela** es una API backend para la gestión y seguimiento de incidentes de ciberseguridad, desarrollada con .NET y orientada a representar el flujo de trabajo de un entorno SOC (Security Operations Center).
+**Sistema Centinela** es un sistema para la gestión y seguimiento de incidentes de ciberseguridad, desarrollado principalmente con C#/.NET y orientado a representar el flujo de trabajo de un entorno SOC (Security Operations Center).
 
 El sistema permite registrar incidentes, clasificarlos, asignarlos a analistas, modificar su estado, incorporar notas de investigación y mantener un historial de auditoría de las acciones realizadas.
 
@@ -90,6 +90,11 @@ Incluye endpoints HTTP, autenticación JWT, autorización por roles y políticas
 - xUnit
 - Docker
 - Docker Compose
+- React
+- TypeScript
+- Vite
+- Nginx
+- Oxlint
 - GitHub Actions
 
 ## API
@@ -200,13 +205,17 @@ Construir la imagen de la API:
 
 docker build -t sentinelcase-api:local .
 
-Levantar la API y SQL Server:
+Levantar frontend, API y SQL Server:
 
 docker compose up -d
 
 Comprobar los servicios:
 
 docker compose ps
+
+Frontend: http://localhost:5173
+
+API: http://localhost:8080
 
 Detener los servicios:
 
@@ -256,6 +265,9 @@ En cada push o pull request hacia main se ejecutan automáticamente:
 - Build en Release
 - Tests
 - Build de la imagen Docker
+- Build del frontend
+- Lint del frontend
+- Build de la imagen Docker del frontend
 
 ## Estado del proyecto
 
