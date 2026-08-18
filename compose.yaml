@@ -32,12 +32,16 @@ services:
       start_period: 30s
 
   api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
     image: sentinelcase-api:local
     container_name: sentinelcase-api
     restart: unless-stopped
 
     environment:
-      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_URLS: "http://+:8080"
 
       ConnectionStrings__DefaultConnection: >
@@ -50,6 +54,9 @@ services:
 
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+
+    volumes:
+      - ${HOME}/.microsoft/usersecrets:/root/.microsoft/usersecrets:ro
 
     ports:
       - "127.0.0.1:8080:8080"
