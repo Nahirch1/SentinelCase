@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Infrastructure.Identity;
 using SentinelCase.Infrastructure.Identity.Tokens;
+using SentinelCase.Infrastructure.Messaging.Outbox;
 using SentinelCase.Infrastructure.Persistence;
 using SentinelCase.Infrastructure.Persistence.Repositories;
 
@@ -55,6 +56,8 @@ public static class DependencyInjection
             IncidentNoteRepository>();
 
         services.AddScoped<JwtTokenService>();
+
+        services.AddHostedService<OutboxProcessor>();
 
         services.AddSingleton(TimeProvider.System);
 

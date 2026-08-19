@@ -1,8 +1,12 @@
+using System.Text.Json;
+
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
+using SentinelCase.Domain.Common;
 using SentinelCase.Domain.Entities;
+using SentinelCase.Infrastructure.Messaging.Outbox;
 using SentinelCase.Infrastructure.Identity;
 
 namespace SentinelCase.Infrastructure.Persistence;
@@ -30,6 +34,54 @@ public sealed class ApplicationDbContext
 
     public DbSet<RefreshToken> RefreshTokens =>
         Set<RefreshToken>();
+
+    public DbSet<OutboxMessage> OutboxMessages =>
+        Set<OutboxMessage>();
+
+    public override Task<int> SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        AddDomainEventsToOutbox();
+
+        return base.SaveChangesAsync(
+            cancellationToken);
+    }
+
+    private void AddDomainEventsToOutbox()
+    {
+        var entities = ChangeTracker
+            .Entries<SecurityIncident>()
+            .Select(entry => entry.Entity)
+            .Where(entity => entity.DomainEvents.Count > 0)
+            .ToArray();
+
+        if (entities.Length == 0)
+        {
+            return;
+        }
+
+        var messages = entities
+            .SelectMany(entity =>
+                entity.DomainEvents.Select(domainEvent =>
+                    new OutboxMessage
+                    {
+                        Id = Guid.NewGuid(),
+                        Type = domainEvent.GetType().FullName
+                            ?? domainEvent.GetType().Name,
+                        Payload = JsonSerializer.Serialize(
+                            domainEvent,
+                            domainEvent.GetType()),
+                        OccurredAt = DateTimeOffset.UtcNow
+                    }))
+            .ToArray();
+
+        OutboxMessages.AddRange(messages);
+
+        foreach (var entity in entities)
+        {
+            entity.ClearDomainEvents();
+        }
+    }
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

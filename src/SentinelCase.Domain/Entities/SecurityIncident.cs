@@ -1,10 +1,14 @@
+using SentinelCase.Domain.Common;
 using SentinelCase.Domain.Enums;
+using SentinelCase.Domain.Events;
 using SentinelCase.Domain.Exceptions;
 
 namespace SentinelCase.Domain.Entities;
 
 public sealed class SecurityIncident
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+
     private const int MaximumTitleLength = 200;
     private const int MaximumDescriptionLength = 4000;
 
@@ -49,6 +53,14 @@ public sealed class SecurityIncident
 
     public DateTimeOffset? AssignedAt { get; private set; }
 
+    public IReadOnlyCollection<IDomainEvent> DomainEvents =>
+        _domainEvents.AsReadOnly();
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+
     public static SecurityIncident Create(
         string title,
         string description,
@@ -66,13 +78,21 @@ public sealed class SecurityIncident
                 "The incident detection date cannot be later than its creation date.");
         }
 
-        return new SecurityIncident(
+        var incident = new SecurityIncident(
             Guid.NewGuid(),
             title.Trim(),
             description.Trim(),
             severity,
             detectedAt,
             createdAt);
+
+        incident._domainEvents.Add(
+            new IncidentCreatedDomainEvent(
+                incident.Id,
+                incident.Title,
+                incident.Severity));
+
+        return incident;
     }
 
     public void StartInvestigation()
@@ -85,7 +105,15 @@ public sealed class SecurityIncident
                 "Only an open incident can enter investigation.");
         }
 
+        var previousStatus = Status;
+
         Status = IncidentStatus.UnderInvestigation;
+
+        _domainEvents.Add(
+            new IncidentStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status));
     }
 
     public void Contain()
@@ -98,7 +126,15 @@ public sealed class SecurityIncident
                 "Only an incident under investigation can be contained.");
         }
 
+        var previousStatus = Status;
+
         Status = IncidentStatus.Contained;
+
+        _domainEvents.Add(
+            new IncidentStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status));
     }
 
     public void Resolve()
@@ -111,7 +147,15 @@ public sealed class SecurityIncident
                 "Only a contained incident can be resolved.");
         }
 
+        var previousStatus = Status;
+
         Status = IncidentStatus.Resolved;
+
+        _domainEvents.Add(
+            new IncidentStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status));
     }
 
     public void Close(DateTimeOffset closedAt)
@@ -130,8 +174,16 @@ public sealed class SecurityIncident
                 "The closure date cannot be earlier than the creation date.");
         }
 
+        var previousStatus = Status;
+
         Status = IncidentStatus.Closed;
         ClosedAt = closedAt;
+
+        _domainEvents.Add(
+            new IncidentStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status));
     }
 
     public void AssignTo(
@@ -160,6 +212,11 @@ public sealed class SecurityIncident
 
         AssignedTo = analystIdentifier.Trim();
         AssignedAt = assignedAt;
+
+        _domainEvents.Add(
+            new IncidentAssignedDomainEvent(
+                Id,
+                AssignedTo));
     }
 
     public void ChangeSeverity(IncidentSeverity severity)
@@ -167,7 +224,15 @@ public sealed class SecurityIncident
         EnsureNotClosed();
         ValidateSeverity(severity);
 
+        var previousSeverity = Severity;
+
         Severity = severity;
+
+        _domainEvents.Add(
+            new IncidentSeverityChangedDomainEvent(
+                Id,
+                previousSeverity,
+                Severity));
     }
 
     public void UpdateDetails(string title, string description)
@@ -178,6 +243,9 @@ public sealed class SecurityIncident
 
         Title = title.Trim();
         Description = description.Trim();
+
+        _domainEvents.Add(
+            new IncidentDetailsUpdatedDomainEvent(Id));
     }
 
     private void EnsureNotClosed()
