@@ -6,14 +6,18 @@ using Serilog;
 using Serilog.Events;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 using SentinelCase.Api.Common.Authorization;
 using SentinelCase.Api.Common.ExceptionHandling;
 using SentinelCase.Api.Common.Identity;
 using SentinelCase.Api.Endpoints;
+using SentinelCase.Api.Endpoints.Auth;
 using SentinelCase.Application;
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Infrastructure;
+using SentinelCase.Infrastructure.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,9 +100,49 @@ builder.Services.AddCors(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
+var isTesting =
+    builder.Environment.IsEnvironment("Testing");
+
+var jwtIssuer =
+    builder.Configuration["Jwt:Issuer"]
+    ?? (isTesting
+        ? "SistemaCentinela.Tests"
+        : throw new InvalidOperationException(
+            "Jwt:Issuer is missing."));
+
+var jwtAudience =
+    builder.Configuration["Jwt:Audience"]
+    ?? (isTesting
+        ? "SistemaCentinela.Tests"
+        : throw new InvalidOperationException(
+            "Jwt:Audience is missing."));
+
+var jwtSigningKey =
+    builder.Configuration["Jwt:SigningKey"]
+    ?? (isTesting
+        ? "SistemaCentinela_Test_Signing_Key_2026_AtLeast_32_Bytes"
+        : throw new InvalidOperationException(
+            "Jwt:SigningKey is missing."));
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer();
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters =
+            new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtIssuer,
+                ValidAudience = jwtAudience,
+                IssuerSigningKey =
+                    new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtSigningKey)),
+                ClockSkew = TimeSpan.FromSeconds(30)
+            };
+    });
 
 builder.Services
     .AddAuthorizationBuilder()
@@ -148,6 +192,9 @@ app.UseSerilogRequestLogging(options =>
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    await IdentitySeeder.SeedAsync(
+        app.Services);
 }
 
 app.UseExceptionHandler();
@@ -173,6 +220,7 @@ app.MapHealthChecks(
 
 app.MapControllers();
 app.MapIncidentEndpoints();
+app.MapAuthEndpoints();
 
 app.Run();
 

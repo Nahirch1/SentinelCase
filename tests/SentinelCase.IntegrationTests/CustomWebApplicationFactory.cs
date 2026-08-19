@@ -2,14 +2,17 @@ using System.Data.Common;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using SentinelCase.Infrastructure.Identity;
 using SentinelCase.Infrastructure.Persistence;
 using SentinelCase.IntegrationTests.Authentication;
 
@@ -22,6 +25,18 @@ public sealed class CustomWebApplicationFactory
         IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        builder.ConfigureAppConfiguration((_, configuration) =>
+        {
+            configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["Jwt:Issuer"] = "SistemaCentinela.Tests",
+                    ["Jwt:Audience"] = "SistemaCentinela.Tests",
+                    ["Jwt:SigningKey"] =
+                        "SistemaCentinela_Test_Signing_Key_2026_AtLeast_32_Bytes"
+                });
+        });
 
         builder.ConfigureTestServices(services =>
         {
@@ -42,6 +57,74 @@ public sealed class CustomWebApplicationFactory
                 .GetRequiredService<ApplicationDbContext>();
 
         dbContext.Database.EnsureCreated();
+
+        var roleManager =
+            scope.ServiceProvider
+                .GetRequiredService<
+                    RoleManager<IdentityRole<Guid>>>();
+
+        var userManager =
+            scope.ServiceProvider
+                .GetRequiredService<
+                    UserManager<ApplicationUser>>();
+
+        const string role = "SocManager";
+        const string email = "manager@test.local";
+
+        if (!roleManager.RoleExistsAsync(role)
+            .GetAwaiter()
+            .GetResult())
+        {
+            roleManager.CreateAsync(
+                new IdentityRole<Guid>
+                {
+                    Id = Guid.NewGuid(),
+                    Name = role
+                })
+                .GetAwaiter()
+                .GetResult();
+        }
+
+        var user = userManager
+            .FindByEmailAsync(email)
+            .GetAwaiter()
+            .GetResult();
+
+        if (user is null)
+        {
+            user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                DisplayName = "Test SOC Manager",
+                IsActive = true,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            var result = userManager
+                .CreateAsync(
+                    user,
+                    "TestPassword_2026!")
+                .GetAwaiter()
+                .GetResult();
+
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    string.Join(
+                        "; ",
+                        result.Errors.Select(
+                            x => x.Description)));
+            }
+
+            userManager.AddToRoleAsync(
+                user,
+                role)
+                .GetAwaiter()
+                .GetResult();
+        }
 
         return host;
     }

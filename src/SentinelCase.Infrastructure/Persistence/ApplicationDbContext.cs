@@ -1,9 +1,17 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+
 using SentinelCase.Domain.Entities;
+using SentinelCase.Infrastructure.Identity;
 
 namespace SentinelCase.Infrastructure.Persistence;
 
-public sealed class ApplicationDbContext : DbContext
+public sealed class ApplicationDbContext
+    : IdentityDbContext<
+        ApplicationUser,
+        IdentityRole<Guid>,
+        Guid>
 {
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options)
@@ -20,11 +28,15 @@ public sealed class ApplicationDbContext : DbContext
     public DbSet<IncidentNote> IncidentNotes =>
         Set<IncidentNote>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public DbSet<RefreshToken> RefreshTokens =>
+        Set<RefreshToken>();
+
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(ApplicationDbContext).Assembly);
-
-        base.OnModelCreating(modelBuilder);
     }
 }

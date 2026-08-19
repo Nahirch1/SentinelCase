@@ -1,7 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SentinelCase.Application.Common.Interfaces;
+using SentinelCase.Infrastructure.Identity;
+using SentinelCase.Infrastructure.Identity.Tokens;
 using SentinelCase.Infrastructure.Persistence;
 using SentinelCase.Infrastructure.Persistence.Repositories;
 
@@ -25,6 +28,20 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(connectionString));
 
+        services
+            .AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+
+                options.Password.RequiredLength = 10;
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<ApplicationDbContext>();
+
         services.AddScoped<
             ISecurityIncidentRepository,
             SecurityIncidentRepository>();
@@ -36,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<
             IIncidentNoteRepository,
             IncidentNoteRepository>();
+
+        services.AddScoped<JwtTokenService>();
 
         services.AddSingleton(TimeProvider.System);
 
