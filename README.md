@@ -180,6 +180,14 @@ Entre las métricas personalizadas se encuentran:
 
 También se utiliza Serilog para logging estructurado, incluyendo identificación de trazas y usuario asociado a las solicitudes.
 
+## Correlation ID
+
+La API utiliza `X-Correlation-ID` para facilitar el seguimiento de solicitudes.
+
+Si el cliente envía un identificador, la API lo conserva y lo devuelve en la respuesta. Si no se proporciona uno, genera automáticamente un identificador para la solicitud.
+
+Esto facilita relacionar solicitudes, respuestas, logs y tareas de diagnóstico.
+
 ## Compresión HTTP
 
 La API utiliza compresión de respuestas HTTP para reducir el tamaño de transferencia.

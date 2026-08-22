@@ -208,6 +208,26 @@ app.UseExceptionHandler();
 
 app.Use(async (context, next) =>
 {
+    const string correlationHeader = "X-Correlation-ID";
+
+    var correlationId =
+        context.Request.Headers.TryGetValue(
+            correlationHeader,
+            out var providedCorrelationId)
+        && !string.IsNullOrWhiteSpace(providedCorrelationId)
+            ? providedCorrelationId.ToString()
+            : Guid.NewGuid().ToString();
+
+    context.TraceIdentifier = correlationId;
+
+    context.Response.Headers[correlationHeader] =
+        correlationId;
+
+    await next();
+});
+
+app.Use(async (context, next) =>
+{
     context.Response.Headers.XContentTypeOptions =
         "nosniff";
 
