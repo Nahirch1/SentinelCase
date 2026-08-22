@@ -38,6 +38,11 @@ builder.Services.AddSerilog((services, configuration) =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+});
+
 builder.Services
     .AddHealthChecks()
     .AddDbContextCheck<
@@ -225,6 +230,8 @@ app.Use(async (context, next) =>
 });
 
 app.UseHttpsRedirection();
+
+app.UseResponseCompression();
 
 app.UseRateLimiter();
 

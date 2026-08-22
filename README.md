@@ -180,6 +180,14 @@ Entre las métricas personalizadas se encuentran:
 
 También se utiliza Serilog para logging estructurado, incluyendo identificación de trazas y usuario asociado a las solicitudes.
 
+## Compresión HTTP
+
+La API utiliza compresión de respuestas HTTP para reducir el tamaño de transferencia.
+
+Los clientes compatibles pueden solicitar respuestas comprimidas mediante `Accept-Encoding`, y la API responde utilizando compresión cuando corresponde.
+
+La compresión fue validada con respuestas `gzip` y el encabezado `Vary: Accept-Encoding`.
+
 ## Health checks
 
 La API expone:
