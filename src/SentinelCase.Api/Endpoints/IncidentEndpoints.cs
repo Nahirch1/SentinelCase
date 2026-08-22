@@ -11,6 +11,7 @@ using SentinelCase.Application.Features.Incidents.Queries.GetIncidentById;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentHistory;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidentNotes;
 using SentinelCase.Application.Features.Incidents.Queries.GetIncidents;
+using SentinelCase.Application.Features.Incidents.Queries.GetIncidentSummary;
 using SentinelCase.Domain.Enums;
 
 namespace SentinelCase.Api.Endpoints;
@@ -38,6 +39,12 @@ public static class IncidentEndpoints
             .Produces<PagedResult<GetIncidentsItem>>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .ProducesValidationProblem();
+
+        group.MapGet("/summary", GetIncidentSummaryAsync)
+            .WithName("GetIncidentSummary")
+            .RequireAuthorization()
+            .Produces<IncidentSummary>(StatusCodes.Status200OK)
+            .Produces(StatusCodes.Status401Unauthorized);
 
         group.MapGet("/{id:guid}", GetIncidentByIdAsync)
             .WithName("GetIncidentById")
@@ -290,4 +297,15 @@ public static class IncidentEndpoints
 
     public sealed record ChangeIncidentStatusRequest(
         IncidentStatus Status);
+    private static async Task<IResult> GetIncidentSummaryAsync(
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetIncidentSummaryQuery(),
+            cancellationToken);
+
+        return Results.Ok(result);
+    }
+
 }

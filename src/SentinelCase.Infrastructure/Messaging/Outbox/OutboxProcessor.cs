@@ -1,8 +1,11 @@
+using System.Diagnostics;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using SentinelCase.Infrastructure.Observability;
 using SentinelCase.Infrastructure.Persistence;
 
 namespace SentinelCase.Infrastructure.Messaging.Outbox;
@@ -12,13 +15,16 @@ public sealed class OutboxProcessor
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<OutboxProcessor> _logger;
+    private readonly SentinelCaseMetrics _metrics;
 
     public OutboxProcessor(
         IServiceScopeFactory scopeFactory,
-        ILogger<OutboxProcessor> logger)
+        ILogger<OutboxProcessor> logger,
+        SentinelCaseMetrics metrics)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _metrics = metrics;
     }
 
     protected override async Task ExecuteAsync(
@@ -54,18 +60,46 @@ public sealed class OutboxProcessor
             scope.ServiceProvider
                 .GetRequiredService<ApplicationDbContext>();
 
-        var messages =
-            await dbContext.OutboxMessages
+        List<OutboxMessage> messages;
+
+        var pendingQuery =
+            dbContext.OutboxMessages
                 .Where(x =>
                     x.ProcessedAt == null &&
-                    x.RetryCount < 5)
+                    x.RetryCount < 5);
+
+        var isSqlite =
+            dbContext.Database.ProviderName?
+                .Contains(
+                    "Sqlite",
+                    StringComparison.OrdinalIgnoreCase)
+            == true;
+
+        if (isSqlite)
+        {
+            var pendingMessages =
+                await pendingQuery.ToListAsync(
+                    cancellationToken);
+
+            messages = pendingMessages
                 .OrderBy(x => x.OccurredAt)
                 .Take(20)
-                .ToListAsync(
-                    cancellationToken);
+                .ToList();
+        }
+        else
+        {
+            messages =
+                await pendingQuery
+                    .OrderBy(x => x.OccurredAt)
+                    .Take(20)
+                    .ToListAsync(
+                        cancellationToken);
+        }
 
         foreach (var message in messages)
         {
+            var stopwatch = Stopwatch.StartNew();
+
             try
             {
                 _logger.LogInformation(
@@ -77,13 +111,24 @@ public sealed class OutboxProcessor
                     DateTimeOffset.UtcNow;
 
                 message.Error = null;
+
+                stopwatch.Stop();
+
+                _metrics.RecordOutboxProcessed(
+                    message.Type,
+                    stopwatch.Elapsed.TotalMilliseconds);
             }
             catch (Exception exception)
             {
+                stopwatch.Stop();
+
                 message.RetryCount++;
 
                 message.Error =
                     exception.Message;
+
+                _metrics.RecordOutboxFailure(
+                    message.Type);
 
                 _logger.LogError(
                     exception,

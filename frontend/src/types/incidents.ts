@@ -73,3 +73,17 @@ export interface PagedResult<T> {
   hasPreviousPage: boolean
   hasNextPage: boolean
 }
+
+export interface IncidentSummary {
+  total: number
+  open: number
+  critical: number
+  underInvestigation: number
+  contained: number
+  resolved: number
+  closed: number
+  lowSeverity: number
+  mediumSeverity: number
+  highSeverity: number
+  criticalSeverity: number
+}

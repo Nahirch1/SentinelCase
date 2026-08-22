@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getApiToken } from '../auth/token'
 
-import { getIncidents } from '../api/incidents'
+import {
+  getIncidents,
+  getIncidentSummary,
+} from '../api/incidents'
 import { IncidentRow } from '../components/IncidentRow'
 
-import {
-  IncidentSeverity,
-  IncidentStatus,
-  type IncidentListItem,
+import type {
+  IncidentListItem,
+  IncidentSummary,
 } from '../types/incidents'
 
 interface DashboardPageProps {
@@ -20,6 +22,9 @@ export function DashboardPage({
   const [incidents, setIncidents] =
     useState<IncidentListItem[]>([])
 
+  const [summary, setSummary] =
+    useState<IncidentSummary | null>(null)
+
   const [loading, setLoading] =
     useState(true)
 
@@ -30,15 +35,19 @@ export function DashboardPage({
     const token =
       getApiToken()
 
-    getIncidents(
-      {
-        pageNumber: 1,
-        pageSize: 100,
-      },
-      token,
-    )
-      .then((result) => {
-        setIncidents(result.items)
+    Promise.all([
+      getIncidents(
+        {
+          pageNumber: 1,
+          pageSize: 8,
+        },
+        token,
+      ),
+      getIncidentSummary(token),
+    ])
+      .then(([incidentsResult, summaryResult]) => {
+        setIncidents(incidentsResult.items)
+        setSummary(summaryResult)
         setError(null)
       })
       .catch((requestError: unknown) => {
@@ -53,66 +62,36 @@ export function DashboardPage({
       })
   }, [])
 
-  const summary = useMemo(() => {
-    return {
-      open: incidents.filter(
-        (incident) =>
-          incident.status === IncidentStatus.Open,
-      ).length,
-
-      critical: incidents.filter(
-        (incident) =>
-          incident.severity === IncidentSeverity.Critical,
-      ).length,
-
-      investigation: incidents.filter(
-        (incident) =>
-          incident.status ===
-          IncidentStatus.UnderInvestigation,
-      ).length,
-
-      contained: incidents.filter(
-        (incident) =>
-          incident.status === IncidentStatus.Contained,
-      ).length,
-
-      resolved: incidents.filter(
-        (incident) =>
-          incident.status === IncidentStatus.Resolved,
-      ).length,
-    }
-  }, [incidents])
-
   return (
     <>
       <div className="dashboard-note">
-        Resumen calculado sobre los incidentes cargados en esta vista.
+        Métricas globales calculadas por el backend sobre todos los incidentes.
       </div>
 
       <section className="dashboard-grid">
         <div className="dashboard-card">
           <span>Abiertos</span>
-          <strong>{summary.open}</strong>
+          <strong>{summary?.open ?? 0}</strong>
         </div>
 
         <div className="dashboard-card dashboard-card-critical">
           <span>Críticos</span>
-          <strong>{summary.critical}</strong>
+          <strong>{summary?.critical ?? 0}</strong>
         </div>
 
         <div className="dashboard-card dashboard-card-info">
           <span>En investigación</span>
-          <strong>{summary.investigation}</strong>
+          <strong>{summary?.underInvestigation ?? 0}</strong>
         </div>
 
         <div className="dashboard-card dashboard-card-warning">
           <span>Contenidos</span>
-          <strong>{summary.contained}</strong>
+          <strong>{summary?.contained ?? 0}</strong>
         </div>
 
         <div className="dashboard-card dashboard-card-success">
           <span>Resueltos</span>
-          <strong>{summary.resolved}</strong>
+          <strong>{summary?.resolved ?? 0}</strong>
         </div>
       </section>
 
@@ -150,9 +129,7 @@ export function DashboardPage({
           !error &&
           incidents.length > 0 && (
             <div className="incident-list">
-              {incidents
-                .slice(0, 8)
-                .map((incident) => (
+              {incidents.map((incident) => (
                   <IncidentRow
                     key={incident.id}
                     incident={incident}

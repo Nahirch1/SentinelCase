@@ -27,9 +27,14 @@ public interface ISecurityIncidentRepository
         string? assignedTo = null,
         CancellationToken cancellationToken = default);
 
+
+    Task<IncidentSummary> GetSummaryAsync(
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsWithTitleAsync(
         string title,
         CancellationToken cancellationToken = default);
+
 
     Task<bool> ExistsWithTitleAsync(
         string title,

@@ -16,17 +16,20 @@ public sealed class ChangeIncidentStatusCommandHandler
     private readonly IIncidentHistoryRepository _historyRepository;
     private readonly ICurrentUser _currentUser;
     private readonly TimeProvider _timeProvider;
+    private readonly ISentinelCaseMetrics _metrics;
 
     public ChangeIncidentStatusCommandHandler(
         ISecurityIncidentRepository repository,
         IIncidentHistoryRepository historyRepository,
         ICurrentUser currentUser,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        ISentinelCaseMetrics metrics)
     {
         _repository = repository;
         _historyRepository = historyRepository;
         _currentUser = currentUser;
         _timeProvider = timeProvider;
+        _metrics = metrics;
     }
 
     public async Task<ChangeIncidentStatusResult?> Handle(
@@ -103,6 +106,10 @@ public sealed class ChangeIncidentStatusCommandHandler
         await _historyRepository.AddAsync(
             historyEntry,
             cancellationToken);
+
+        _metrics.RecordIncidentStatusChanged(
+            previousStatus,
+            incident.Status);
 
         return new ChangeIncidentStatusResult(
             incident.Id,

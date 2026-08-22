@@ -95,21 +95,93 @@ internal sealed class SecurityIncidentRepository
 
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var filteredIncidents =
-            await query.ToListAsync(cancellationToken);
+        SecurityIncident[] incidents;
 
-        var incidents = filteredIncidents
-            .OrderByDescending(incident => incident.CreatedAt)
-            .ThenByDescending(incident => incident.Id)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToArray();
+        var isSqlite =
+            _dbContext.Database.ProviderName?
+                .Contains(
+                    "Sqlite",
+                    StringComparison.OrdinalIgnoreCase)
+            == true;
+
+        if (isSqlite)
+        {
+            var filteredIncidents =
+                await query.ToArrayAsync(
+                    cancellationToken);
+
+            incidents = filteredIncidents
+                .OrderByDescending(
+                    incident => incident.CreatedAt)
+                .ThenByDescending(
+                    incident => incident.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToArray();
+        }
+        else
+        {
+            incidents = await query
+                .OrderByDescending(
+                    incident => incident.CreatedAt)
+                .ThenByDescending(
+                    incident => incident.Id)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToArrayAsync(cancellationToken);
+        }
 
         return new PagedResult<SecurityIncident>(
             incidents,
             pageNumber,
             pageSize,
             totalCount);
+    }
+
+    public async Task<IncidentSummary> GetSummaryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var query = _dbContext.SecurityIncidents
+            .AsNoTracking();
+
+        var total = await query.CountAsync(cancellationToken);
+
+        var byStatus = await query
+            .GroupBy(x => x.Status)
+            .Select(group => new
+            {
+                Status = group.Key,
+                Count = group.Count()
+            })
+            .ToDictionaryAsync(
+                x => x.Status,
+                x => x.Count,
+                cancellationToken);
+
+        var bySeverity = await query
+            .GroupBy(x => x.Severity)
+            .Select(group => new
+            {
+                Severity = group.Key,
+                Count = group.Count()
+            })
+            .ToDictionaryAsync(
+                x => x.Severity,
+                x => x.Count,
+                cancellationToken);
+
+        return new IncidentSummary(
+            total,
+            byStatus.GetValueOrDefault(IncidentStatus.Open),
+            bySeverity.GetValueOrDefault(IncidentSeverity.Critical),
+            byStatus.GetValueOrDefault(IncidentStatus.UnderInvestigation),
+            byStatus.GetValueOrDefault(IncidentStatus.Contained),
+            byStatus.GetValueOrDefault(IncidentStatus.Resolved),
+            byStatus.GetValueOrDefault(IncidentStatus.Closed),
+            bySeverity.GetValueOrDefault(IncidentSeverity.Low),
+            bySeverity.GetValueOrDefault(IncidentSeverity.Medium),
+            bySeverity.GetValueOrDefault(IncidentSeverity.High),
+            bySeverity.GetValueOrDefault(IncidentSeverity.Critical));
     }
 
     public Task<bool> ExistsWithTitleAsync(

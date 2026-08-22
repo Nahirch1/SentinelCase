@@ -101,6 +101,25 @@ internal sealed class FakeSecurityIncidentRepository
         return Task.FromResult(result);
     }
 
+    public Task<IncidentSummary> GetSummaryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var summary = new IncidentSummary(
+            _incidents.Count,
+            _incidents.Count(x => x.Status == IncidentStatus.Open),
+            _incidents.Count(x => x.Severity == IncidentSeverity.Critical),
+            _incidents.Count(x => x.Status == IncidentStatus.UnderInvestigation),
+            _incidents.Count(x => x.Status == IncidentStatus.Contained),
+            _incidents.Count(x => x.Status == IncidentStatus.Resolved),
+            _incidents.Count(x => x.Status == IncidentStatus.Closed),
+            _incidents.Count(x => x.Severity == IncidentSeverity.Low),
+            _incidents.Count(x => x.Severity == IncidentSeverity.Medium),
+            _incidents.Count(x => x.Severity == IncidentSeverity.High),
+            _incidents.Count(x => x.Severity == IncidentSeverity.Critical));
+
+        return Task.FromResult(summary);
+    }
+
     public Task<bool> ExistsWithTitleAsync(
         string title,
         CancellationToken cancellationToken = default)

@@ -52,7 +52,7 @@ services:
         TrustServerCertificate=True;
         Encrypt=True;
 
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://host.docker.internal:4317"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
 
     volumes:
@@ -85,6 +85,76 @@ services:
     depends_on:
       api:
         condition: service_started
+
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.136.0
+    container_name: sentinelcase-otel-collector
+    restart: unless-stopped
+
+    command:
+      - "--config=/etc/otelcol-contrib/config.yaml"
+
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:8889:8889"
+
+    depends_on:
+      - jaeger
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.73.0
+    container_name: sentinelcase-jaeger
+    restart: unless-stopped
+
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+    ports:
+      - "127.0.0.1:16686:16686"
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: sentinelcase-prometheus
+    restart: unless-stopped
+
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+    ports:
+      - "127.0.0.1:9090:9090"
+
+    depends_on:
+      - otel-collector
+
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: sentinelcase-grafana
+    restart: unless-stopped
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+
+    ports:
+      - "127.0.0.1:3000:3000"
+
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+
+    depends_on:
+      - prometheus
+
 
 volumes:
   sentinelcase-sqlserver-data:

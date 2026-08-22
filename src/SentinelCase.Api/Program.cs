@@ -18,6 +18,7 @@ using SentinelCase.Application;
 using SentinelCase.Application.Common.Interfaces;
 using SentinelCase.Infrastructure;
 using SentinelCase.Infrastructure.Identity;
+using SentinelCase.Infrastructure.Observability;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,6 +85,7 @@ builder.Services
             .AddAspNetCoreInstrumentation()
             .AddHttpClientInstrumentation()
             .AddRuntimeInstrumentation()
+            .AddMeter(SentinelCaseMetrics.MeterName)
             .AddOtlpExporter());
 
 builder.Services.AddCors(options =>

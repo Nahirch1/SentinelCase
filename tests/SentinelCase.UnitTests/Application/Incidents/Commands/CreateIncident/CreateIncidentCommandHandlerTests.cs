@@ -32,7 +32,8 @@ public sealed class CreateIncidentCommandHandlerTests
             repository,
             historyRepository,
             currentUser,
-            timeProvider);
+            timeProvider,
+            new FakeSentinelCaseMetrics());
 
         var command = new CreateIncidentCommand(
             "Suspicious privileged login",
@@ -107,7 +108,8 @@ public sealed class CreateIncidentCommandHandlerTests
             repository,
             historyRepository,
             currentUser,
-            timeProvider);
+            timeProvider,
+            new FakeSentinelCaseMetrics());
 
         var command = new CreateIncidentCommand(
             "malware detected",

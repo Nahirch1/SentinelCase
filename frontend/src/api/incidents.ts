@@ -374,3 +374,30 @@ export async function updateIncident(
     )
   }
 }
+
+import type {
+  IncidentSummary,
+} from '../types/incidents'
+
+export async function getIncidentSummary(
+  token?: string,
+): Promise<IncidentSummary> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/incidents/summary`,
+    {
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : undefined,
+    },
+  )
+
+  if (!response.ok) {
+    throw new Error(
+      `No se pudo obtener el resumen (${response.status}).`,
+    )
+  }
+
+  return response.json()
+}

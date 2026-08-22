@@ -330,7 +330,8 @@ public sealed class ChangeIncidentStatusCommandHandlerTests
             repository,
             historyRepository ?? new FakeIncidentHistoryRepository(),
             new FakeCurrentUser("analyst@sentinelcase.test"),
-            new FakeTimeProvider(currentTime));
+            new FakeTimeProvider(currentTime),
+            new FakeSentinelCaseMetrics());
     }
 
     private static SecurityIncident CreateIncident(

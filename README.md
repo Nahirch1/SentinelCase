@@ -140,38 +140,121 @@ Las modificaciones relevantes de un incidente quedan registradas en su historial
 Cada incidente también puede contener notas de investigación para conservar información generada durante su análisis y seguimiento.
 ## Observabilidad
 
-Sistema Centinela incorpora OpenTelemetry para instrumentación de:
+Sistema Centinela incorpora una pila de observabilidad basada en OpenTelemetry.
+
+La API instrumenta:
 
 - solicitudes ASP.NET Core
 - clientes HTTP
 - métricas del runtime de .NET
-- trazas
-- métricas
+- trazas distribuidas
+- métricas técnicas
+- métricas de dominio
 
-La telemetría puede exportarse mediante OTLP hacia un OpenTelemetry Collector.
+La telemetría se exporta mediante OTLP hacia OpenTelemetry Collector.
 
-El repositorio incluye el archivo:
+El flujo de observabilidad es:
 
-otel-collector-config.yaml
+```text
+SentinelCase.Api
+      |
+      v
+OpenTelemetry Collector
+      |
+      +----> Prometheus ----> Grafana
+      |
+      +----> Jaeger
+```
 
-También se utiliza Serilog para logging estructurado con identificación de trazas y usuario asociado a las solicitudes.
+Prometheus almacena las métricas y Grafana proporciona un dashboard operacional de SentinelCase.
+
+Jaeger permite inspeccionar las trazas generadas por la API.
+
+Entre las métricas personalizadas se encuentran:
+
+- incidentes creados, clasificados por severidad
+- cambios de estado de incidentes
+- mensajes Outbox procesados
+- fallos de procesamiento del Outbox
+- duración del procesamiento del Outbox
+
+También se utiliza Serilog para logging estructurado, incluyendo identificación de trazas y usuario asociado a las solicitudes.
 
 ## Health checks
 
 La API expone:
 
+```text
 GET /health
 GET /health/ready
+```
 
-El readiness check comprueba también la disponibilidad de la base de datos.
+El readiness check comprueba también la disponibilidad de SQL Server.
 
 ## Rate limiting
 
-La API incorpora limitación global de solicitudes.
+La API incorpora limitación global mediante una ventana fija por dirección IP.
 
-Al superar el límite configurado se devuelve:
+Configuración actual:
 
+```text
+100 solicitudes por minuto
+QueueLimit = 0
+```
+
+Al superar el límite se devuelve:
+
+```text
 429 Too Many Requests
+```
+
+La protección fue validada mediante k6.
+
+## Pruebas de carga
+
+El repositorio incluye pruebas reproducibles con k6 dentro de:
+
+```text
+load-tests/
+```
+
+Se incluyen pruebas para:
+
+- health checks
+- validación del rate limiting
+- consultas autenticadas de incidentes
+
+En una prueba de referencia contra:
+
+```text
+GET /api/incidents?pageNumber=1&pageSize=20
+```
+
+utilizando autenticación JWT, Entity Framework Core y SQL Server, se obtuvieron:
+
+```text
+Solicitudes:       77
+Respuestas OK:     77/77
+Errores HTTP:      0.00 %
+Latencia media:    35.41 ms
+Mediana:           13.90 ms
+p95:               54.29 ms
+p99:               474.42 ms
+Máximo observado:  1.22 s
+```
+
+Los thresholds definidos fueron:
+
+```text
+http_req_failed < 1 %
+p95 < 500 ms
+p99 < 1000 ms
+```
+
+Todos los thresholds se cumplieron.
+
+Estos resultados corresponden a una prueba local y representan una referencia de desarrollo, no un benchmark de capacidad máxima del sistema.
+
 ## Testing
 
 El proyecto incluye pruebas unitarias y de integración.
@@ -181,6 +264,7 @@ Las pruebas cubren:
 - autenticación
 - autorización
 - creación y consulta de incidentes
+- resumen operacional de incidentes
 - actualización
 - asignación
 - cambios de estado
@@ -191,13 +275,17 @@ Las pruebas cubren:
 
 Estado actual:
 
-81 tests
-81 passed
+```text
+87 tests
+87 passed
 0 failed
+```
 
 Para ejecutar las pruebas:
 
+```bash
 dotnet test SentinelCase.slnx
+```
 
 ## Docker
 

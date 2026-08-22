@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: SentinelCase
+    orgId: 1
+    folder: SentinelCase
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
