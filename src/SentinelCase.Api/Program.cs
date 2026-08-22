@@ -201,6 +201,29 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.XContentTypeOptions =
+        "nosniff";
+
+    context.Response.Headers.XFrameOptions =
+        "DENY";
+
+    context.Response.Headers.Append(
+        "Referrer-Policy",
+        "no-referrer");
+
+    context.Response.Headers.Append(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=()");
+
+    context.Response.Headers.Append(
+        "Content-Security-Policy",
+        "default-src 'none'; frame-ancestors 'none'");
+
+    await next();
+});
+
 app.UseHttpsRedirection();
 
 app.UseRateLimiter();

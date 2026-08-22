@@ -191,6 +191,18 @@ GET /health/ready
 
 El readiness check comprueba también la disponibilidad de SQL Server.
 
+## Security hardening
+
+La API aplica encabezados HTTP de seguridad de forma global:
+
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `Referrer-Policy: no-referrer`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`
+
+Estos encabezados reducen la exposición frente a interpretación incorrecta de contenido, embedding no autorizado, filtración de información mediante referrers y acceso innecesario a capacidades del navegador.
+
 ## Rate limiting
 
 La API incorpora limitación global mediante una ventana fija por dirección IP.
